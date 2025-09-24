@@ -1,14 +1,36 @@
 package com.vanmos.van.model.entity;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "alunos")
 public class Aluno {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(name = "nome", length = 100, nullable = false)
     private String nome;
+    
+    @Column(name = "telefone_responsavel", length = 15)
     private String telefoneResponsavel;
+    
+    @Column(name = "endereco_embarque", length = 200)
     private String enderecoEmbarque;
+    
+    @Column(name = "endereco_desembarque", length = 200)
     private String enderecoDesembarque;
+    
+    @Column(name = "escola", length = 100)
     private String escola;
+    
+    @Column(name = "turno", length = 20)
     private String turno;
+    
+    @Column(name = "serie", length = 20)
     private String serie;
+    
+    @Column(name = "ativo")
     private boolean ativo;
 
     public Long getId() { return id; }
