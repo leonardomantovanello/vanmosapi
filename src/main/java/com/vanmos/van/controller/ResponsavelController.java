@@ -1,49 +1,43 @@
 package com.vanmos.van.controller;
 
 import com.vanmos.van.model.entity.Responsavel;
+import com.vanmos.van.model.service.ResponsavelService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/responsaveis")
+@CrossOrigin(origins = "*")
 public class ResponsavelController {
 
-    private List<Responsavel> responsaveis = new ArrayList<>();
+    @Autowired
+    private ResponsavelService responsavelService;
 
     @GetMapping
     public List<Responsavel> listarTodos() {
-        return responsaveis;
-    }
-
-    @GetMapping("/findall")
-    public List<Responsavel> findAll() {
-        return responsaveis;
+        return responsavelService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Responsavel buscarPorId(@PathVariable Long id) {
-        return responsaveis.stream().filter(r -> r.getId().equals(id)).findFirst().orElse(null);
+    public Optional<Responsavel> buscarPorId(@PathVariable Long id) {
+        return responsavelService.findById(id);
     }
 
     @PostMapping
     public Responsavel criar(@RequestBody Responsavel responsavel) {
-        responsavel.setId((long) (responsaveis.size() + 1));
-        responsaveis.add(responsavel);
-        return responsavel;
+        return responsavelService.save(responsavel);
     }
 
     @PutMapping("/{id}")
     public Responsavel atualizar(@PathVariable Long id, @RequestBody Responsavel responsavel) {
-        responsavel.setId(id);
-        responsaveis.removeIf(r -> r.getId().equals(id));
-        responsaveis.add(responsavel);
-        return responsavel;
+        return responsavelService.update(id, responsavel);
     }
 
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id) {
-        responsaveis.removeIf(r -> r.getId().equals(id));
+        responsavelService.deleteById(id);
     }
 }

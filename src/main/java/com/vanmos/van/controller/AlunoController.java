@@ -1,49 +1,43 @@
 package com.vanmos.van.controller;
 
 import com.vanmos.van.model.entity.Aluno;
+import com.vanmos.van.model.service.AlunoService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/alunos")
+@CrossOrigin(origins = "*")
 public class AlunoController {
 
-    private List<Aluno> alunos = new ArrayList<>();
+    @Autowired
+    private AlunoService alunoService;
 
     @GetMapping
     public List<Aluno> listarTodos() {
-        return alunos;
-    }
-
-    @GetMapping("/findall")
-    public List<Aluno> findAll() {
-        return alunos;
+        return alunoService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Aluno buscarPorId(@PathVariable Long id) {
-        return alunos.stream().filter(a -> a.getId().equals(id)).findFirst().orElse(null);
+    public Optional<Aluno> buscarPorId(@PathVariable Long id) {
+        return alunoService.findById(id);
     }
 
     @PostMapping
     public Aluno criar(@RequestBody Aluno aluno) {
-        aluno.setId((long) (alunos.size() + 1));
-        alunos.add(aluno);
-        return aluno;
+        return alunoService.save(aluno);
     }
 
     @PutMapping("/{id}")
     public Aluno atualizar(@PathVariable Long id, @RequestBody Aluno aluno) {
-        aluno.setId(id);
-        alunos.removeIf(a -> a.getId().equals(id));
-        alunos.add(aluno);
-        return aluno;
+        return alunoService.update(id, aluno);
     }
 
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id) {
-        alunos.removeIf(a -> a.getId().equals(id));
+        alunoService.deleteById(id);
     }
 }

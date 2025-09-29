@@ -3,7 +3,7 @@ package com.vanmos.van.model.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "loguin")
+@Table(name = "login")
 public class Login {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
