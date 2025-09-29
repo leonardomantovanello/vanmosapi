@@ -10,19 +10,19 @@ public class Cadastro {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "nome_completo", length = 100, nullable = false)
-    private String nomeCompleto;
+    @Column(name = "nome", length = 100)
+    private String nome;
     
     @Column(name = "idade")
     private Integer idade;
     
-    @Column(name = "cpf", length = 14, unique = true)
+    @Column(name = "cpf", length = 14)
     private String cpf;
     
     @Column(name = "genero", length = 20)
     private String genero;
     
-    @Column(name = "email", length = 100, unique = true)
+    @Column(name = "email", length = 100)
     private String email;
     
     @Column(name = "senha", length = 255)
@@ -34,8 +34,8 @@ public class Cadastro {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public String getNomeCompleto() { return nomeCompleto; }
-    public void setNomeCompleto(String nomeCompleto) { this.nomeCompleto = nomeCompleto; }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 
     public Integer getIdade() { return idade; }
     public void setIdade(Integer idade) { this.idade = idade; }

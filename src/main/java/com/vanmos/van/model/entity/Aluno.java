@@ -26,9 +26,7 @@ public class Aluno {
     
     @Column(name = "turno", length = 20)
     private String turno;
-    
-    @Column(name = "serie", length = 20)
-    private String serie;
+
     
     @Column(name = "ativo")
     private boolean ativo;
@@ -54,8 +52,6 @@ public class Aluno {
     public String getTurno() { return turno; }
     public void setTurno(String turno) { this.turno = turno; }
 
-    public String getSerie() { return serie; }
-    public void setSerie(String serie) { this.serie = serie; }
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }

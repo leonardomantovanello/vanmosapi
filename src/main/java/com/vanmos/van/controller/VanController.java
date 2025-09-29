@@ -1,49 +1,43 @@
 package com.vanmos.van.controller;
 
 import com.vanmos.van.model.entity.Van;
+import com.vanmos.van.model.service.VanService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/vans")
+@CrossOrigin(origins = "*")
 public class VanController {
 
-    private List<Van> vans = new ArrayList<>();
+    @Autowired
+    private VanService vanService;
 
     @GetMapping
     public List<Van> listarTodas() {
-        return vans;
-    }
-
-    @GetMapping("/findall")
-    public List<Van> findAll() {
-        return vans;
+        return vanService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Van buscarPorId(@PathVariable Long id) {
-        return vans.stream().filter(v -> v.getId().equals(id)).findFirst().orElse(null);
+    public Optional<Van> buscarPorId(@PathVariable Long id) {
+        return vanService.findById(id);
     }
 
     @PostMapping
     public Van criar(@RequestBody Van van) {
-        van.setId((long) (vans.size() + 1));
-        vans.add(van);
-        return van;
+        return vanService.save(van);
     }
 
     @PutMapping("/{id}")
     public Van atualizar(@PathVariable Long id, @RequestBody Van van) {
-        van.setId(id);
-        vans.removeIf(v -> v.getId().equals(id));
-        vans.add(van);
-        return van;
+        return vanService.update(id, van);
     }
 
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id) {
-        vans.removeIf(v -> v.getId().equals(id));
+        vanService.deleteById(id);
     }
 }
