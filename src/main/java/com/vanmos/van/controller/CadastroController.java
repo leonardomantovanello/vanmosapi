@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/cadastro")
@@ -51,5 +53,31 @@ public class CadastroController {
     public ResponseEntity<String> limparTudo() {
         cadastroService.deleteAll();
         return ResponseEntity.ok("Banco de dados limpo com sucesso!");
+    }
+    
+    @GetMapping("/teste-login/{emailOuCpf}")
+    public ResponseEntity<?> testeLogin(@PathVariable String emailOuCpf) {
+        try {
+            Cadastro usuario = cadastroService.findByEmailOrCpf(emailOuCpf);
+            if (usuario != null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("encontrado", true);
+                response.put("id", usuario.getId());
+                response.put("nome", usuario.getNome());
+                response.put("email", usuario.getEmail());
+                response.put("cpf", usuario.getCpf());
+                response.put("senha", "[OCULTA - Tamanho: " + (usuario.getSenha() != null ? usuario.getSenha().length() : 0) + "]");
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("encontrado", false);
+                response.put("mensagem", "Usuário não encontrado");
+                return ResponseEntity.ok(response);
+            }
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("erro", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
     }
 }

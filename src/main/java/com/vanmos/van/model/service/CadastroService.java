@@ -49,14 +49,15 @@ public class CadastroService {
     
     public Cadastro findByEmailOrCpf(String emailOuCpf) {
         List<Cadastro> usuarios = cadastroRepository.findAll();
-        String cpfLimpo = emailOuCpf.replaceAll("[^0-9]", ""); // Remove máscara do CPF
+        String cpfLimpo = emailOuCpf.replaceAll("[^0-9]", "");
         
         for (Cadastro usuario : usuarios) {
             // Buscar por email
-            if (usuario.getEmail() != null && usuario.getEmail().equals(emailOuCpf)) {
+            if (usuario.getEmail() != null && usuario.getEmail().equalsIgnoreCase(emailOuCpf.trim())) {
                 return usuario;
             }
-            // Buscar por CPF (com e sem máscara)
+            
+            // Buscar por CPF
             if (usuario.getCpf() != null) {
                 String cpfUsuario = usuario.getCpf().replaceAll("[^0-9]", "");
                 if (cpfUsuario.equals(cpfLimpo)) {
@@ -64,6 +65,7 @@ public class CadastroService {
                 }
             }
         }
+        
         return null;
     }
 }
