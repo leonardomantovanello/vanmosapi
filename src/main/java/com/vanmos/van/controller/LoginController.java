@@ -1,8 +1,6 @@
 package com.vanmos.van.controller;
 
-import com.vanmos.van.model.entity.Login;
 import com.vanmos.van.model.entity.Cadastro;
-import com.vanmos.van.model.service.LoginService;
 import com.vanmos.van.model.service.CadastroService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,47 +8,45 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-import java.util.List;
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/api/login")
 @CrossOrigin(origins = "*")
 public class LoginController {
 
     @Autowired
-    private LoginService loginService;
-    
-    @Autowired
     private CadastroService cadastroService;
 
     @PostMapping
-    public ResponseEntity<?> login(@RequestBody Login login) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> loginData) {
         try {
-            System.out.println("Login attempt - Email/CPF: " + login.getEmailOuCpf());
-            System.out.println("Login attempt - Senha: " + login.getSenha());
+            String emailOuCpf = loginData.get("emailOuCpf");
+            String senha = loginData.get("senha");
+            
+
+            
+            if (emailOuCpf == null || senha == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("sucesso", false);
+                response.put("mensagem", "Email/CPF e senha são obrigatórios");
+                return ResponseEntity.badRequest().body(response);
+            }
             
             // Buscar usuário por email ou CPF
-            Cadastro usuario = cadastroService.findByEmailOrCpf(login.getEmailOuCpf());
+            Cadastro usuario = cadastroService.findByEmailOrCpf(emailOuCpf.trim());
             
-            if (usuario != null) {
-                System.out.println("Usuário encontrado - Email: " + usuario.getEmail());
-                System.out.println("Usuário encontrado - CPF: " + usuario.getCpf());
-                System.out.println("Senha no banco: '" + usuario.getSenha() + "'");
-                System.out.println("Senha enviada: '" + login.getSenha() + "'");
-                System.out.println("Tamanho senha banco: " + usuario.getSenha().length());
-                System.out.println("Tamanho senha enviada: " + login.getSenha().length());
-                System.out.println("Senhas são iguais: " + usuario.getSenha().equals(login.getSenha()));
-                
-                // Tentar com trim para remover espaços
-                String senhaBanco = usuario.getSenha().trim();
-                String senhaEnviada = login.getSenha().trim();
-                System.out.println("Comparando com trim: " + senhaBanco.equals(senhaEnviada));
-                
-                if (senhaBanco.equals(senhaEnviada)) {
+
+            
+            if (usuario != null && usuario.getSenha() != null) {
+                // Comparar senhas (removendo espaços em branco)
+                if (usuario.getSenha().trim().equals(senha.trim())) {
                     Map<String, Object> response = new HashMap<>();
                     response.put("sucesso", true);
                     response.put("mensagem", "Login realizado com sucesso");
+                    Map<String, Object> usuarioInfo = new HashMap<>();
+                    usuarioInfo.put("id", usuario.getId());
+                    usuarioInfo.put("nome", usuario.getNome());
+                    usuarioInfo.put("email", usuario.getEmail());
+                    response.put("usuario", usuarioInfo);
                     return ResponseEntity.ok(response);
                 } else {
                     Map<String, Object> response = new HashMap<>();
@@ -59,37 +55,25 @@ public class LoginController {
                     return ResponseEntity.badRequest().body(response);
                 }
             } else {
-                System.out.println("Usuário não encontrado");
                 Map<String, Object> response = new HashMap<>();
                 response.put("sucesso", false);
                 response.put("mensagem", "Usuário não encontrado");
                 return ResponseEntity.badRequest().body(response);
             }
         } catch (Exception e) {
+
             Map<String, Object> response = new HashMap<>();
             response.put("sucesso", false);
-            response.put("mensagem", "Erro: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            response.put("mensagem", "Erro interno: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
 
     @PostMapping("/logout")
-    public String logout() {
-        return "Logout realizado com sucesso";
-    }
-    
-    @GetMapping
-    public List<Login> listarTodos() {
-        return loginService.findAll();
-    }
-    
-    @GetMapping("/{id}")
-    public Optional<Login> buscarPorId(@PathVariable Long id) {
-        return loginService.findById(id);
-    }
-    
-    @DeleteMapping("/{id}")
-    public void deletar(@PathVariable Long id) {
-        loginService.deleteById(id);
+    public ResponseEntity<?> logout() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("sucesso", true);
+        response.put("mensagem", "Logout realizado com sucesso");
+        return ResponseEntity.ok(response);
     }
 }
