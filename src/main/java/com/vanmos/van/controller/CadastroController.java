@@ -22,6 +22,7 @@ public class CadastroController {
     @PostMapping
     public ResponseEntity<?> cadastrar(@RequestBody Cadastro cadastro) {
         try {
+            cadastro.setAtivo(false);
             Cadastro resultado = cadastroService.save(cadastro);
             return ResponseEntity.ok(resultado);
         } catch (Exception e) {
@@ -47,6 +48,13 @@ public class CadastroController {
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id) {
         cadastroService.deleteById(id);
+    }
+
+    @PutMapping("/{id}/ativar")
+    public void ativarperfil(@PathVariable Long id) {
+
+        System.out.println("ID recebido: " + id);
+        cadastroService.updateCodStatus(id);
     }
     
     @DeleteMapping
