@@ -31,6 +31,12 @@ public class Cadastro {
     @Column(name = "aceitou_termos")
     private boolean aceitouTermos;
 
+    @Column(name = "ativo")
+    private boolean ativo;
+
+    public boolean getAtivo() { return ativo; }
+    public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

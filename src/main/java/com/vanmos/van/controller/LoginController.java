@@ -36,7 +36,7 @@ public class LoginController {
             
 
             
-            if (usuario != null && usuario.getSenha() != null) {
+            if (usuario != null && usuario.getSenha() != null && usuario.getAtivo() != false) {
                 // Comparar senhas (removendo espaços em branco)
                 if (usuario.getSenha().trim().equals(senha.trim())) {
                     Map<String, Object> response = new HashMap<>();
@@ -55,6 +55,14 @@ public class LoginController {
                     return ResponseEntity.badRequest().body(response);
                 }
             } else {
+
+                if (usuario.getAtivo()==false) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("sucesso", false);
+                    response.put("mensagem", "Usuário inativo");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
                 Map<String, Object> response = new HashMap<>();
                 response.put("sucesso", false);
                 response.put("mensagem", "Usuário não encontrado");

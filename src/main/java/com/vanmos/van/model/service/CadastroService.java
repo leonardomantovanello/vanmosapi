@@ -34,6 +34,14 @@ public class CadastroService {
         cadastro.setId(id);
         return cadastroRepository.save(cadastro);
     }
+
+    public Cadastro updateCodStatus(Long id) {
+        Cadastro cadastro = cadastroRepository.findById(id).get();
+        cadastro.setAtivo(true);
+
+        System.out.println("Cod Ativo " + cadastro.getAtivo());
+        return cadastroRepository.save(cadastro);
+    }
     
     public boolean existsById(Long id) {
         return cadastroRepository.existsById(id);
