@@ -56,6 +56,13 @@ public class CadastroController {
         System.out.println("ID recebido: " + id);
         cadastroService.updateCodStatus(id);
     }
+
+    @PutMapping("/{id}/inativar")
+    public void inativarperfil(@PathVariable Long id) {
+
+        System.out.println("ID recebido para inativar: " + id);
+        cadastroService.inativarCadastro(id);
+    }
     
     @DeleteMapping
     public ResponseEntity<String> limparTudo() {
