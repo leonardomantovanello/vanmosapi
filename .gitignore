@@ -43,3 +43,6 @@ mvnw.cmd
 # OS
 .DS_Store
 Thumbs.db
+
+# Sensitive config
+src/main/resources/application.properties
