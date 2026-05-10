@@ -1,7 +1,0 @@
-spring.datasource.url=jdbc:sqlserver://<host>:1433;databaseName=<dbname>;encrypt=false;trustServerCertificate=true;loginTimeout=30
-spring.datasource.username=<username>
-spring.datasource.password=<password>
-spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.SQLServerDialect
