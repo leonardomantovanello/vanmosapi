@@ -2,6 +2,7 @@ package com.vanmos.van.controller;
 
 import com.vanmos.van.model.entity.Cadastro;
 import com.vanmos.van.model.service.CadastroService;
+import com.vanmos.van.model.service.LoginSucessoException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,21 @@ public class CadastroController {
             cadastro.setAtivo(false);
             Cadastro resultado = cadastroService.save(cadastro);
             return ResponseEntity.ok(resultado);
+        } catch (LoginSucessoException e) {
+            Cadastro usuario = e.getUsuario();
+            Map<String, Object> response = new HashMap<>();
+            response.put("sucesso", true);
+            response.put("mensagem", "Login realizado com sucesso");
+            Map<String, Object> usuarioInfo = new HashMap<>();
+            usuarioInfo.put("id", usuario.getId());
+            usuarioInfo.put("nome", usuario.getNome());
+            usuarioInfo.put("email", usuario.getEmail());
+            response.put("usuario", usuarioInfo);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("erro", e.getMessage());
+            return ResponseEntity.status(409).body(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Erro: " + e.getMessage());
         }
@@ -70,6 +86,13 @@ public class CadastroController {
         return ResponseEntity.ok("Banco de dados limpo com sucesso!");
     }
     
+    @GetMapping("/verificar-email")
+    public ResponseEntity<?> verificarEmail(@RequestParam String email) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("disponivel", !cadastroService.emailJaCadastrado(email));
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/teste-login/{emailOuCpf}")
     public ResponseEntity<?> testeLogin(@PathVariable String emailOuCpf) {
         try {
