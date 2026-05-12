@@ -38,27 +38,39 @@ public class CadastroService {
     }
 
     public Cadastro save(Cadastro cadastro) {
+        validarCpf(cadastro);
+        verificarEmailDuplicado(cadastro);
+        return cadastroRepository.save(cadastro);
+    }
+
+    private void validarCpf(Cadastro cadastro) {
         if (cadastro.getCpf() != null && !cpfValido(cadastro.getCpf())) {
             throw new IllegalArgumentException("CPF incorreto");
         }
-        if (cadastro.getEmail() != null) {
-            Optional<Cadastro> existenteOpt = cadastroRepository.findByEmailIgnoreCase(cadastro.getEmail().trim());
-            if (existenteOpt.isPresent()) {
-                Cadastro existente = existenteOpt.get();
-                String cpfNovo = cadastro.getCpf() != null ? cadastro.getCpf().replaceAll("[^0-9]", "") : "";
-                String cpfExistente = existente.getCpf() != null ? existente.getCpf().replaceAll("[^0-9]", "") : "";
-                if (!cpfNovo.equals(cpfExistente)) {
-                    throw new IllegalArgumentException("E-mail já cadastrado");
-                }
-                boolean nomeDiferente = cadastro.getNome() != null && !cadastro.getNome().equalsIgnoreCase(existente.getNome());
-                boolean senhaDiferente = cadastro.getSenha() != null && !cadastro.getSenha().equals(existente.getSenha());
-                if (nomeDiferente || senhaDiferente) {
-                    throw new IllegalArgumentException("Informações incorretas, verifique os dados anteriores.");
-                }
-                throw new LoginSucessoException(existente);
-            }
+    }
+
+    private void verificarEmailDuplicado(Cadastro cadastro) {
+        if (cadastro.getEmail() == null) return;
+
+        Optional<Cadastro> existenteOpt = cadastroRepository.findByEmailIgnoreCase(cadastro.getEmail().trim());
+        if (existenteOpt.isEmpty()) return;
+
+        Cadastro existente = existenteOpt.get();
+        String cpfNovo      = cadastro.getCpf()  != null ? cadastro.getCpf().replaceAll("[^0-9]", "")  : "";
+        String cpfExistente = existente.getCpf() != null ? existente.getCpf().replaceAll("[^0-9]", "") : "";
+
+        if (!cpfNovo.equals(cpfExistente)) {
+            throw new IllegalArgumentException("E-mail já cadastrado");
         }
-        return cadastroRepository.save(cadastro);
+
+        boolean nomeDiferente  = cadastro.getNome()  != null && !cadastro.getNome().equalsIgnoreCase(existente.getNome());
+        boolean senhaDiferente = cadastro.getSenha() != null && !cadastro.getSenha().equals(existente.getSenha());
+
+        if (nomeDiferente || senhaDiferente) {
+            throw new IllegalArgumentException("Informações incorretas, verifique os dados anteriores.");
+        }
+
+        throw new LoginSucessoException(existente);
     }
     
     public void deleteById(Long id) {
@@ -71,18 +83,17 @@ public class CadastroService {
     }
 
     public Cadastro updateCodStatus(Long id) {
-        Cadastro cadastro = cadastroRepository.findById(id).get();
+        // orElseThrow substitui .get() — lança exceção clara se o ID não existir
+        Cadastro cadastro = cadastroRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cadastro não encontrado: " + id));
         cadastro.setAtivo(true);
-
-        System.out.println("Cod Ativo " + cadastro.getAtivo());
         return cadastroRepository.save(cadastro);
     }
 
     public Cadastro inativarCadastro(Long id) {
-        Cadastro cadastro = cadastroRepository.findById(id).get();
+        Cadastro cadastro = cadastroRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cadastro não encontrado: " + id));
         cadastro.setAtivo(false);
-
-        System.out.println("Cod Inativo " + cadastro.getAtivo());
         return cadastroRepository.save(cadastro);
     }
     
@@ -99,24 +110,9 @@ public class CadastroService {
     }
     
     public Cadastro findByEmailOrCpf(String emailOuCpf) {
-        List<Cadastro> usuarios = cadastroRepository.findAll();
+        // Query direta no banco — substitui o findAll() em memória que causava OutOfMemoryError
         String cpfLimpo = emailOuCpf.replaceAll("[^0-9]", "");
-        
-        for (Cadastro usuario : usuarios) {
-            // Buscar por email
-            if (usuario.getEmail() != null && usuario.getEmail().equalsIgnoreCase(emailOuCpf.trim())) {
-                return usuario;
-            }
-            
-            // Buscar por CPF
-            if (usuario.getCpf() != null) {
-                String cpfUsuario = usuario.getCpf().replaceAll("[^0-9]", "");
-                if (cpfUsuario.equals(cpfLimpo)) {
-                    return usuario;
-                }
-            }
-        }
-        
-        return null;
+        return cadastroRepository.findByEmailIgnoreCaseOrCpfDigits(emailOuCpf.trim(), cpfLimpo)
+                .orElse(null);
     }
 }

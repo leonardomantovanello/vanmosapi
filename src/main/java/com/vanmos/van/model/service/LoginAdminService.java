@@ -46,4 +46,9 @@ public class LoginAdminService {
     public LoginAdmin findByEmailOuCpfAndSenha(String emailOuCpf, String senha) {
         return loginAdminRepository.findByEmailOuCpfAndSenha(emailOuCpf, senha);
     }
+
+    // Busca apenas por email/CPF — a comparação de senha é feita em Java com BCrypt
+    public LoginAdmin findByEmailOuCpf(String emailOuCpf) {
+        return loginAdminRepository.findByEmailOuCpf(emailOuCpf).orElse(null);
+    }
 }

@@ -2,6 +2,8 @@ package com.vanmos.van.model.service;
 
 import com.vanmos.van.model.entity.MotoristasAdmin;
 import com.vanmos.van.model.repository.MotoristasAdminRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +14,9 @@ import java.util.Optional;
 @Service
 @Transactional
 public class MotoristasAdminService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(MotoristasAdminService.class);
+
     @Autowired
     private MotoristasAdminRepository motoristasAdminRepository;
     
@@ -25,9 +29,9 @@ public class MotoristasAdminService {
     }
     
     public MotoristasAdmin save(MotoristasAdmin motoristasAdmin) {
-        System.out.println("Service: Salvando motorista - " + motoristasAdmin.getNomeCompleto());
+        log.debug("Salvando motorista id={}", motoristasAdmin.getId());
         MotoristasAdmin saved = motoristasAdminRepository.save(motoristasAdmin);
-        System.out.println("Service: Motorista salvo com ID - " + saved.getId());
+        log.debug("Motorista salvo com id={}", saved.getId());
         return saved;
     }
     
@@ -52,21 +56,21 @@ public class MotoristasAdminService {
         return motoristasAdminRepository.findByGmailOrCpf(emailOuCpf).orElse(null);
     }
     
-    public MotoristasAdmin ativar(Long id) {
+    // Método privado extraído para eliminar duplicação entre ativar() e inativar()
+    private MotoristasAdmin alterarStatus(Long id, boolean ativo) {
         Optional<MotoristasAdmin> motorista = findById(id);
         if (motorista.isPresent()) {
-            motorista.get().setAtivo(true);
+            motorista.get().setAtivo(ativo);
             return save(motorista.get());
         }
         return null;
     }
-    
+
+    public MotoristasAdmin ativar(Long id) {
+        return alterarStatus(id, true);
+    }
+
     public MotoristasAdmin inativar(Long id) {
-        Optional<MotoristasAdmin> motorista = findById(id);
-        if (motorista.isPresent()) {
-            motorista.get().setAtivo(false);
-            return save(motorista.get());
-        }
-        return null;
+        return alterarStatus(id, false);
     }
 }

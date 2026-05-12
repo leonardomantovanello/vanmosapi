@@ -1,43 +1,62 @@
 package com.vanmos.van.controller;
 
+import com.vanmos.van.dto.ApiResponse;
 import com.vanmos.van.model.entity.Responsavel;
 import com.vanmos.van.model.service.ResponsavelService;
+import com.vanmos.van.security.JwtUtil;
+import com.vanmos.van.security.OwnershipValidator;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/responsaveis")
-@CrossOrigin(origins = "*")
 public class ResponsavelController {
 
-    @Autowired
-    private ResponsavelService responsavelService;
+    @Autowired private ResponsavelService responsavelService;
+    @Autowired private OwnershipValidator  ownership;
+    @Autowired private JwtUtil             jwtUtil;
 
     @GetMapping
-    public List<Responsavel> listarTodos() {
-        return responsavelService.findAll();
+    public ResponseEntity<ApiResponse<List<Responsavel>>> listarTodos() {
+        return ResponseEntity.ok(ApiResponse.ok("Responsáveis listados.", responsavelService.findAll()));
     }
 
     @GetMapping("/{id}")
-    public Optional<Responsavel> buscarPorId(@PathVariable Long id) {
-        return responsavelService.findById(id);
+    public ResponseEntity<ApiResponse<Responsavel>> buscarPorId(@PathVariable Long id) {
+        Responsavel r = responsavelService.findById(id)
+                .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Responsavel", id));
+        return ResponseEntity.ok(ApiResponse.ok("Responsável encontrado.", r));
     }
 
     @PostMapping
-    public Responsavel criar(@RequestBody Responsavel responsavel) {
-        return responsavelService.save(responsavel);
+    public ResponseEntity<ApiResponse<Responsavel>> criar(@Valid @RequestBody Responsavel responsavel) {
+        return ResponseEntity.status(201).body(
+            ApiResponse.created("Responsável criado.", responsavelService.save(responsavel))
+        );
     }
 
     @PutMapping("/{id}")
-    public Responsavel atualizar(@PathVariable Long id, @RequestBody Responsavel responsavel) {
-        return responsavelService.update(id, responsavel);
+    public ResponseEntity<ApiResponse<Responsavel>> atualizar(
+            @PathVariable Long id, @Valid @RequestBody Responsavel responsavel) {
+
+        // Ponto 2: responsável só pode editar o próprio registro
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "responsável");
+
+        return ResponseEntity.ok(
+            ApiResponse.ok("Responsável atualizado.", responsavelService.update(id, responsavel))
+        );
     }
 
     @DeleteMapping("/{id}")
-    public void deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
+        // Apenas ADMIN pode deletar responsáveis
+        ownership.requireAdmin();
         responsavelService.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.noContent("Responsável removido."));
     }
 }
