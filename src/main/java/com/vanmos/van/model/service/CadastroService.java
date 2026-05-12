@@ -22,7 +22,42 @@ public class CadastroService {
         return cadastroRepository.findById(id);
     }
     
+    private boolean cpfValido(String cpf) {
+        String c = cpf.replaceAll("[^0-9]", "");
+        if (c.length() != 11 || c.chars().distinct().count() == 1) return false;
+        int s1 = 0, s2 = 0;
+        for (int i = 0; i < 9; i++) s1 += (c.charAt(i) - '0') * (10 - i);
+        int d1 = (s1 * 10) % 11; if (d1 == 10) d1 = 0;
+        for (int i = 0; i < 10; i++) s2 += (c.charAt(i) - '0') * (11 - i);
+        int d2 = (s2 * 10) % 11; if (d2 == 10) d2 = 0;
+        return d1 == (c.charAt(9) - '0') && d2 == (c.charAt(10) - '0');
+    }
+
+    public boolean emailJaCadastrado(String email) {
+        return cadastroRepository.findByEmailIgnoreCase(email.trim()).isPresent();
+    }
+
     public Cadastro save(Cadastro cadastro) {
+        if (cadastro.getCpf() != null && !cpfValido(cadastro.getCpf())) {
+            throw new IllegalArgumentException("CPF incorreto");
+        }
+        if (cadastro.getEmail() != null) {
+            Optional<Cadastro> existenteOpt = cadastroRepository.findByEmailIgnoreCase(cadastro.getEmail().trim());
+            if (existenteOpt.isPresent()) {
+                Cadastro existente = existenteOpt.get();
+                String cpfNovo = cadastro.getCpf() != null ? cadastro.getCpf().replaceAll("[^0-9]", "") : "";
+                String cpfExistente = existente.getCpf() != null ? existente.getCpf().replaceAll("[^0-9]", "") : "";
+                if (!cpfNovo.equals(cpfExistente)) {
+                    throw new IllegalArgumentException("E-mail já cadastrado");
+                }
+                boolean nomeDiferente = cadastro.getNome() != null && !cadastro.getNome().equalsIgnoreCase(existente.getNome());
+                boolean senhaDiferente = cadastro.getSenha() != null && !cadastro.getSenha().equals(existente.getSenha());
+                if (nomeDiferente || senhaDiferente) {
+                    throw new IllegalArgumentException("Informações incorretas, verifique os dados anteriores.");
+                }
+                throw new LoginSucessoException(existente);
+            }
+        }
         return cadastroRepository.save(cadastro);
     }
     
