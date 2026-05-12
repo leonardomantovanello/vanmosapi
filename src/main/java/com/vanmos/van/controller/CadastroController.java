@@ -1,121 +1,118 @@
 package com.vanmos.van.controller;
 
+import com.vanmos.van.dto.ApiResponse;
 import com.vanmos.van.model.entity.Cadastro;
 import com.vanmos.van.model.service.CadastroService;
 import com.vanmos.van.model.service.LoginSucessoException;
+import com.vanmos.van.security.JwtUtil;
+import com.vanmos.van.security.OwnershipValidator;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Map;
-import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/cadastro")
-@CrossOrigin(origins = "*")
 public class CadastroController {
 
-    @Autowired
-    private CadastroService cadastroService;
+    @Autowired private CadastroService    cadastroService;
+    @Autowired private PasswordEncoder    passwordEncoder;
+    @Autowired private JwtUtil            jwtUtil;
+    @Autowired private OwnershipValidator ownership;
 
     @PostMapping
-    public ResponseEntity<?> cadastrar(@RequestBody Cadastro cadastro) {
+    public ResponseEntity<ApiResponse<?>> cadastrar(@Valid @RequestBody Cadastro cadastro) {
+        cadastro.setAtivo(false);
+        cadastro.setSenha(passwordEncoder.encode(cadastro.getSenha()));
+
         try {
-            cadastro.setAtivo(false);
             Cadastro resultado = cadastroService.save(cadastro);
-            return ResponseEntity.ok(resultado);
+            // Nunca retornar o hash da senha na resposta
+            resultado.setSenha(null);
+            return ResponseEntity.status(201).body(
+                ApiResponse.created("Cadastro realizado. Aguarde ativação.", resultado)
+            );
         } catch (LoginSucessoException e) {
+            // Usuário já existe com os mesmos dados — emite tokens de login
             Cadastro usuario = e.getUsuario();
-            Map<String, Object> response = new HashMap<>();
-            response.put("sucesso", true);
-            response.put("mensagem", "Login realizado com sucesso");
-            Map<String, Object> usuarioInfo = new HashMap<>();
-            usuarioInfo.put("id", usuario.getId());
-            usuarioInfo.put("nome", usuario.getNome());
-            usuarioInfo.put("email", usuario.getEmail());
-            response.put("usuario", usuarioInfo);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            Map<String, String> response = new HashMap<>();
-            response.put("erro", e.getMessage());
-            return ResponseEntity.status(409).body(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Erro: " + e.getMessage());
+            String accessToken  = jwtUtil.generateAccessToken(usuario.getEmail(), "RESPONSAVEL", usuario.getId());
+            String refreshToken = jwtUtil.generateRefreshToken(usuario.getEmail());
+            return ResponseEntity.ok(ApiResponse.ok("Login realizado com sucesso.", Map.of(
+                "id",           usuario.getId(),
+                "nome",         usuario.getNome(),
+                "email",        usuario.getEmail(),
+                "accessToken",  accessToken,
+                "refreshToken", refreshToken
+            )));
         }
+        // IllegalArgumentException e demais são capturadas pelo GlobalExceptionHandler
     }
-    
+
+    // Protegido por ROLE_ADMIN no SecurityConfig
     @GetMapping
-    public List<Cadastro> listarTodos() {
-        return cadastroService.findAll();
+    public ResponseEntity<ApiResponse<List<Cadastro>>> listarTodos() {
+        return ResponseEntity.ok(ApiResponse.ok("Cadastros listados.", cadastroService.findAll()));
     }
-    
+
     @GetMapping("/{id}")
-    public Optional<Cadastro> buscarPorId(@PathVariable Long id) {
-        return cadastroService.findById(id);
+    public ResponseEntity<ApiResponse<Cadastro>> buscarPorId(@PathVariable Long id) {
+        // Ponto 2: usuário só pode ver o próprio cadastro; ADMIN vê qualquer um
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "cadastro");
+
+        Cadastro c = cadastroService.findById(id)
+                .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Cadastro", id));
+        c.setSenha(null); // nunca expor hash
+        return ResponseEntity.ok(ApiResponse.ok("Cadastro encontrado.", c));
     }
-    
+
     @PutMapping("/{id}")
-    public Cadastro atualizar(@PathVariable Long id, @RequestBody Cadastro cadastro) {
-        return cadastroService.update(id, cadastro);
-    }
-    
-    @DeleteMapping("/{id}")
-    public void deletar(@PathVariable Long id) {
-        cadastroService.deleteById(id);
-    }
+    public ResponseEntity<ApiResponse<Cadastro>> atualizar(
+            @PathVariable Long id, @Valid @RequestBody Cadastro cadastro) {
 
-    @PutMapping("/{id}/ativar")
-    public void ativarperfil(@PathVariable Long id) {
+        // Ponto 2: valida que o recurso pertence ao usuário autenticado
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "cadastro");
 
-        System.out.println("ID recebido: " + id);
-        cadastroService.updateCodStatus(id);
-    }
-
-    @PutMapping("/{id}/inativar")
-    public void inativarperfil(@PathVariable Long id) {
-
-        System.out.println("ID recebido para inativar: " + id);
-        cadastroService.inativarCadastro(id);
-    }
-    
-    @DeleteMapping
-    public ResponseEntity<String> limparTudo() {
-        cadastroService.deleteAll();
-        return ResponseEntity.ok("Banco de dados limpo com sucesso!");
-    }
-    
-    @GetMapping("/verificar-email")
-    public ResponseEntity<?> verificarEmail(@RequestParam String email) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("disponivel", !cadastroService.emailJaCadastrado(email));
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/teste-login/{emailOuCpf}")
-    public ResponseEntity<?> testeLogin(@PathVariable String emailOuCpf) {
-        try {
-            Cadastro usuario = cadastroService.findByEmailOrCpf(emailOuCpf);
-            if (usuario != null) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("encontrado", true);
-                response.put("id", usuario.getId());
-                response.put("nome", usuario.getNome());
-                response.put("email", usuario.getEmail());
-                response.put("cpf", usuario.getCpf());
-                response.put("senha", "[OCULTA - Tamanho: " + (usuario.getSenha() != null ? usuario.getSenha().length() : 0) + "]");
-                return ResponseEntity.ok(response);
-            } else {
-                Map<String, Object> response = new HashMap<>();
-                response.put("encontrado", false);
-                response.put("mensagem", "Usuário não encontrado");
-                return ResponseEntity.ok(response);
-            }
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("erro", e.getMessage());
-            return ResponseEntity.status(500).body(errorResponse);
+        if (cadastro.getSenha() != null && !cadastro.getSenha().isBlank()) {
+            cadastro.setSenha(passwordEncoder.encode(cadastro.getSenha()));
         }
+        Cadastro atualizado = cadastroService.update(id, cadastro);
+        atualizado.setSenha(null);
+        return ResponseEntity.ok(ApiResponse.ok("Cadastro atualizado.", atualizado));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "cadastro");
+
+        cadastroService.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.noContent("Cadastro removido."));
+    }
+
+    // Protegido por ROLE_ADMIN no SecurityConfig
+    @PutMapping("/{id}/ativar")
+    public ResponseEntity<ApiResponse<Void>> ativarPerfil(@PathVariable Long id) {
+        cadastroService.updateCodStatus(id);
+        return ResponseEntity.ok(ApiResponse.noContent("Usuário ativado com sucesso."));
+    }
+
+    // Protegido por ROLE_ADMIN no SecurityConfig
+    @PutMapping("/{id}/inativar")
+    public ResponseEntity<ApiResponse<Void>> inativarPerfil(@PathVariable Long id) {
+        cadastroService.inativarCadastro(id);
+        return ResponseEntity.ok(ApiResponse.noContent("Usuário inativado com sucesso."));
+    }
+
+    @GetMapping("/verificar-email")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> verificarEmail(@RequestParam String email) {
+        return ResponseEntity.ok(ApiResponse.ok("Verificação concluída.",
+            Map.of("disponivel", !cadastroService.emailJaCadastrado(email))
+        ));
     }
 }
