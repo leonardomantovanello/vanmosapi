@@ -43,12 +43,18 @@ public class VanService {
     }
 
     public Van update(Long id, Van van) {
-        if (!vanRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Van", id);
-        }
+        Van existente = vanRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Van", id));
         try {
-            van.setId(id);
-            return vanRepository.save(van);
+            // Atualiza apenas campos editáveis — preserva 'ativa' e 'id' originais
+            existente.setPlaca(van.getPlaca());
+            existente.setModelo(van.getModelo());
+            existente.setMarca(van.getMarca());
+            existente.setAno(van.getAno());
+            existente.setCapacidade(van.getCapacidade());
+            existente.setCor(van.getCor());
+            existente.setRenavam(van.getRenavam());
+            return vanRepository.save(existente);
         } catch (DataIntegrityViolationException ex) {
             log.error("Violação de integridade ao atualizar Van {}: {}", id, ex.getMostSpecificCause().getMessage());
             throw new DuplicateResourceException("Já existe uma van com esta placa ou RENAVAM.");

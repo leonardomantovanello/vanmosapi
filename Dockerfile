@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-alpine
+FROM openjdk:21-jdk-alpine
 
 WORKDIR /app
 

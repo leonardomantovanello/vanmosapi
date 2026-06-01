@@ -1,7 +1,6 @@
 package com.vanmos.van.security;
 
 import com.vanmos.van.exception.ForbiddenException;
-import com.vanmos.van.exception.ResourceNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;

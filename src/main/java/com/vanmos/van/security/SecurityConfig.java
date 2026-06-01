@@ -99,7 +99,7 @@ public class SecurityConfig {
                             "/api/login-admin",
                             "/api/cadastro",
                             "/api/auth/refresh",
-                            "/api/motoristas-admin/login"  // login do motorista é público
+                            "/api/motoristas-admin/login"
                     ).permitAll()
 
                     // Rotas exclusivas de administrador
@@ -108,6 +108,50 @@ public class SecurityConfig {
                             "/api/cadastro/*/ativar",
                             "/api/cadastro/*/inativar"
                     ).hasRole("ADMIN")
+
+                    // Listagem geral de cadastros: apenas ADMIN
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/cadastro")
+                    .hasRole("ADMIN")
+
+                    // Motoristas: leitura para ADMIN e MOTORISTA; escrita apenas ADMIN
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas", "/api/motoristas/**")
+                    .hasAnyRole("ADMIN", "MOTORISTA")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/motoristas")
+                    .hasRole("ADMIN")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/motoristas/**")
+                    .hasRole("ADMIN")
+
+                    // Vans: leitura para ADMIN e MOTORISTA; escrita apenas ADMIN
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/vans", "/api/vans/**")
+                    .hasAnyRole("ADMIN", "MOTORISTA")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/vans")
+                    .hasRole("ADMIN")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/vans/**")
+                    .hasRole("ADMIN")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/vans/**")
+                    .hasRole("ADMIN")
+
+                    // Alunos: ADMIN e MOTORISTA gerenciam; RESPONSAVEL apenas lê
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/alunos", "/api/alunos/**")
+                    .hasAnyRole("ADMIN", "MOTORISTA", "RESPONSAVEL")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/alunos")
+                    .hasAnyRole("ADMIN", "MOTORISTA")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/alunos/**")
+                    .hasAnyRole("ADMIN", "MOTORISTA")
+
+                    .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/alunos/**")
+                    .hasAnyRole("ADMIN", "MOTORISTA")
+
+                    // Responsáveis: cada um acessa o próprio; ADMIN acessa todos
+                    .requestMatchers("/api/responsaveis", "/api/responsaveis/**")
+                    .hasAnyRole("ADMIN", "RESPONSAVEL")
 
                     // Todas as demais rotas exigem qualquer autenticação válida
                     .anyRequest().authenticated()

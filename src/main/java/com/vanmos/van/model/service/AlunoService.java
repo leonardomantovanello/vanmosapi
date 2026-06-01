@@ -60,13 +60,17 @@ public class AlunoService {
     }
 
     public Aluno update(Long id, Aluno aluno) {
-        // Verifica existência antes de atualizar — evita criar registro fantasma
-        if (!alunoRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Aluno", id);
-        }
+        Aluno existente = alunoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Aluno", id));
         try {
-            aluno.setId(id);
-            return alunoRepository.save(aluno);
+            // Atualiza apenas campos editáveis — preserva 'ativo' e 'id' originais
+            existente.setNome(aluno.getNome());
+            existente.setTelefoneResponsavel(aluno.getTelefoneResponsavel());
+            existente.setEnderecoEmbarque(aluno.getEnderecoEmbarque());
+            existente.setEnderecoDesembarque(aluno.getEnderecoDesembarque());
+            existente.setEscola(aluno.getEscola());
+            existente.setTurno(aluno.getTurno());
+            return alunoRepository.save(existente);
         } catch (DataIntegrityViolationException ex) {
             log.error("Violação de integridade ao atualizar Aluno {}: {}", id, ex.getMostSpecificCause().getMessage());
             throw new DuplicateResourceException("Já existe um aluno com esses dados.");

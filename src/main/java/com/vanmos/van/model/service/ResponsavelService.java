@@ -43,12 +43,16 @@ public class ResponsavelService {
     }
 
     public Responsavel update(Long id, Responsavel responsavel) {
-        if (!responsavelRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Responsavel", id);
-        }
+        Responsavel existente = responsavelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Responsavel", id));
         try {
-            responsavel.setId(id);
-            return responsavelRepository.save(responsavel);
+            // Atualiza apenas campos editáveis — preserva 'cpf', 'ativo' e 'id' originais
+            existente.setNome(responsavel.getNome());
+            existente.setTelefone(responsavel.getTelefone());
+            existente.setEmail(responsavel.getEmail());
+            existente.setEndereco(responsavel.getEndereco());
+            existente.setParentesco(responsavel.getParentesco());
+            return responsavelRepository.save(existente);
         } catch (DataIntegrityViolationException ex) {
             log.error("Violação de integridade ao atualizar Responsavel {}: {}", id, ex.getMostSpecificCause().getMessage());
             throw new DuplicateResourceException("Já existe um responsável com este CPF ou e-mail.");

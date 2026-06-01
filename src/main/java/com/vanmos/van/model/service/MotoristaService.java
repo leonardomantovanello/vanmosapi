@@ -43,12 +43,15 @@ public class MotoristaService {
     }
 
     public Motorista update(Long id, Motorista motorista) {
-        if (!motoristaRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Motorista", id);
-        }
+        Motorista existente = motoristaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Motorista", id));
         try {
-            motorista.setId(id);
-            return motoristaRepository.save(motorista);
+            // Atualiza apenas campos editáveis — preserva 'ativo', 'cpf' e 'id' originais
+            existente.setNome(motorista.getNome());
+            existente.setTelefone(motorista.getTelefone());
+            existente.setEmail(motorista.getEmail());
+            existente.setCnh(motorista.getCnh());
+            return motoristaRepository.save(existente);
         } catch (DataIntegrityViolationException ex) {
             log.error("Violação de integridade ao atualizar Motorista {}: {}", id, ex.getMostSpecificCause().getMessage());
             throw new DuplicateResourceException("Já existe um motorista com este CPF ou CNH.");
