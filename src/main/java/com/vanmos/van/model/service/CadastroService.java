@@ -78,8 +78,17 @@ public class CadastroService {
     }
     
     public Cadastro update(Long id, Cadastro cadastro) {
-        cadastro.setId(id);
-        return cadastroRepository.save(cadastro);
+        Cadastro existente = cadastroRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cadastro não encontrado: " + id));
+        // Atualiza apenas campos editáveis pelo próprio usuário.
+        // 'email', 'cpf', 'ativo' e 'aceitouTermos' são imutáveis via este endpoint.
+        existente.setNome(cadastro.getNome());
+        existente.setIdade(cadastro.getIdade());
+        existente.setGenero(cadastro.getGenero());
+        if (cadastro.getSenha() != null && !cadastro.getSenha().isBlank()) {
+            existente.setSenha(cadastro.getSenha()); // já vem hasheada do controller
+        }
+        return cadastroRepository.save(existente);
     }
 
     public Cadastro updateCodStatus(Long id) {
