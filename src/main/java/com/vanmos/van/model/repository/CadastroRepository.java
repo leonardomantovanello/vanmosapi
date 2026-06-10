@@ -12,6 +12,9 @@ public interface CadastroRepository extends JpaRepository<Cadastro, Long> {
 
     Optional<Cadastro> findByEmailIgnoreCase(String email);
 
+    @Query("SELECT c FROM Cadastro c WHERE REPLACE(REPLACE(REPLACE(c.cpf, '.', ''), '-', ''), ' ', '') = :cpfDigits")
+    Optional<Cadastro> findByCpfDigits(@Param("cpfDigits") String cpfDigits);
+
     /**
      * Busca por email (case-insensitive) OU por CPF com apenas dígitos.
      * Substitui o findAll() em memória do CadastroService.

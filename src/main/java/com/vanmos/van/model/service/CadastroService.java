@@ -39,6 +39,7 @@ public class CadastroService {
 
     public Cadastro save(Cadastro cadastro) {
         validarCpf(cadastro);
+        verificarCpfDuplicado(cadastro);
         verificarEmailDuplicado(cadastro);
         return cadastroRepository.save(cadastro);
     }
@@ -47,6 +48,16 @@ public class CadastroService {
         if (cadastro.getCpf() != null && !cpfValido(cadastro.getCpf())) {
             throw new IllegalArgumentException("CPF incorreto");
         }
+    }
+
+    private void verificarCpfDuplicado(Cadastro cadastro) {
+        if (cadastro.getCpf() == null || cadastro.getCpf().isBlank()) return;
+        String cpfDigitos = cadastro.getCpf().replaceAll("[^0-9]", "");
+        cadastroRepository.findByCpfDigits(cpfDigitos).ifPresent(existente -> {
+            if (!existente.getId().equals(cadastro.getId())) {
+                throw new IllegalArgumentException("CPF já cadastrado");
+            }
+        });
     }
 
     private void verificarEmailDuplicado(Cadastro cadastro) {
