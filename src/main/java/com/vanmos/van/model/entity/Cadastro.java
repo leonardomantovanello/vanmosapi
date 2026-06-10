@@ -41,7 +41,7 @@ public class Cadastro {
     // CPF: aceita formatado (000.000.000-00) ou apenas dígitos (00000000000)
     @Pattern(regexp = "^(\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\d{11})$",
              message = "CPF deve estar no formato 000.000.000-00 ou conter 11 dígitos")
-    @Column(name = "cpf", length = 14)
+    @Column(name = "cpf", length = 14, unique = true)
     private String cpf;
 
     @Size(max = 20, message = "Gênero deve ter no máximo 20 caracteres")
