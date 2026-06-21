@@ -3,25 +3,30 @@ package com.vanmos.van.model.service;
 import com.vanmos.van.model.entity.Cadastro;
 import com.vanmos.van.model.repository.CadastroRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class CadastroService {
-    
+
     @Autowired
     private CadastroRepository cadastroRepository;
-    
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public List<Cadastro> findAll() {
         return cadastroRepository.findAll();
     }
-    
+
     public Optional<Cadastro> findById(Long id) {
         return cadastroRepository.findById(id);
     }
-    
+
     private boolean cpfValido(String cpf) {
         String c = cpf.replaceAll("[^0-9]", "");
         if (c.length() != 11 || c.chars().distinct().count() == 1) return false;
@@ -37,10 +42,12 @@ public class CadastroService {
         return cadastroRepository.findByEmailIgnoreCase(email.trim()).isPresent();
     }
 
+    @Transactional
     public Cadastro save(Cadastro cadastro) {
         validarCpf(cadastro);
         verificarCpfDuplicado(cadastro);
         verificarEmailDuplicado(cadastro);
+        cadastro.setSenha(passwordEncoder.encode(cadastro.getSenha()));
         return cadastroRepository.save(cadastro);
     }
 
@@ -60,77 +67,61 @@ public class CadastroService {
         });
     }
 
+    // Cadastro só cadastra — se email já existe, rejeita sempre.
+    // Login é responsabilidade exclusiva do endpoint /api/login.
     private void verificarEmailDuplicado(Cadastro cadastro) {
         if (cadastro.getEmail() == null) return;
-
-        Optional<Cadastro> existenteOpt = cadastroRepository.findByEmailIgnoreCase(cadastro.getEmail().trim());
-        if (existenteOpt.isEmpty()) return;
-
-        Cadastro existente = existenteOpt.get();
-        String cpfNovo      = cadastro.getCpf()  != null ? cadastro.getCpf().replaceAll("[^0-9]", "")  : "";
-        String cpfExistente = existente.getCpf() != null ? existente.getCpf().replaceAll("[^0-9]", "") : "";
-
-        if (!cpfNovo.equals(cpfExistente)) {
+        if (cadastroRepository.findByEmailIgnoreCase(cadastro.getEmail().trim()).isPresent()) {
             throw new IllegalArgumentException("E-mail já cadastrado");
         }
-
-        boolean nomeDiferente  = cadastro.getNome()  != null && !cadastro.getNome().equalsIgnoreCase(existente.getNome());
-        boolean senhaDiferente = cadastro.getSenha() != null && !cadastro.getSenha().equals(existente.getSenha());
-
-        if (nomeDiferente || senhaDiferente) {
-            throw new IllegalArgumentException("Informações incorretas, verifique os dados anteriores.");
-        }
-
-        throw new LoginSucessoException(existente);
     }
-    
+
     public void deleteById(Long id) {
         cadastroRepository.deleteById(id);
     }
-    
+
+    @Transactional
     public Cadastro update(Long id, Cadastro cadastro) {
         Cadastro existente = cadastroRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cadastro não encontrado: " + id));
-        // Atualiza apenas campos editáveis pelo próprio usuário.
-        // 'email', 'cpf', 'ativo' e 'aceitouTermos' são imutáveis via este endpoint.
         existente.setNome(cadastro.getNome());
         existente.setIdade(cadastro.getIdade());
         existente.setGenero(cadastro.getGenero());
         if (cadastro.getSenha() != null && !cadastro.getSenha().isBlank()) {
-            existente.setSenha(cadastro.getSenha()); // já vem hasheada do controller
+            existente.setSenha(passwordEncoder.encode(cadastro.getSenha()));
         }
         return cadastroRepository.save(existente);
     }
 
+    @Transactional
     public Cadastro updateCodStatus(Long id) {
-        // orElseThrow substitui .get() — lança exceção clara se o ID não existir
         Cadastro cadastro = cadastroRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cadastro não encontrado: " + id));
         cadastro.setAtivo(true);
         return cadastroRepository.save(cadastro);
     }
 
+    @Transactional
     public Cadastro inativarCadastro(Long id) {
         Cadastro cadastro = cadastroRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cadastro não encontrado: " + id));
         cadastro.setAtivo(false);
         return cadastroRepository.save(cadastro);
     }
-    
+
     public boolean existsById(Long id) {
         return cadastroRepository.existsById(id);
     }
-    
+
     public long count() {
         return cadastroRepository.count();
     }
-    
+
     public void deleteAll() {
         cadastroRepository.deleteAll();
     }
-    
+
     public Cadastro findByEmailOrCpf(String emailOuCpf) {
-        // Query direta no banco — substitui o findAll() em memória que causava OutOfMemoryError
         String cpfLimpo = emailOuCpf.replaceAll("[^0-9]", "");
         return cadastroRepository.findByEmailIgnoreCaseOrCpfDigits(emailOuCpf.trim(), cpfLimpo)
                 .orElse(null);
