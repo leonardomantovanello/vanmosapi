@@ -29,7 +29,7 @@
 	<properties>
 		<!-- Atualizado de 17 para 21 (LTS compatível com Spring Boot 3.5.x)
 		     O ambiente possui JDK 25 que é retrocompatível com bytecode 21 -->
-		<java.version>21</java.version>
+		<java.version>25</java.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -99,6 +99,14 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.11.0</version>
+				<configuration>
+					<release>${java.version}</release>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
