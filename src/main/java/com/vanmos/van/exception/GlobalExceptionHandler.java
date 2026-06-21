@@ -37,6 +37,7 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final int MAX_LOG_MESSAGE_LENGTH = 500;
 
     // -------------------------------------------------------------------------
     // Ponto 1: Middleware de 404 para rotas inexistentes
@@ -47,8 +48,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoRoute(NoHandlerFoundException ex) {
-        String metodo = ex.getHttpMethod().replaceAll("[\r\n]", "_");
-        String url     = ex.getRequestURL().replaceAll("[\r\n]", "_");
+        String metodo = sanitizeForLog(ex.getHttpMethod());
+        String url     = sanitizeForLog(ex.getRequestURL());
         log.warn("Rota não encontrada: {} {}", metodo, url);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
             ApiResponse.error(404, "Rota não encontrada.")
@@ -62,7 +63,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleMalformedJson(HttpMessageNotReadableException ex) {
         // Sanitiza mensagem antes de logar — previne log injection (CWE-117)
-        String msg = ex.getMessage() != null ? ex.getMessage().replaceAll("[\r\n]", "_") : "null";
+        String msg = sanitizeForLog(ex.getMessage());
         log.warn("JSON malformado: {}", msg);
         return ResponseEntity.badRequest().body(
             ApiResponse.error(400, "O corpo da requisição está malformado ou com tipo de dado incorreto.")
@@ -132,8 +133,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        String msg = ex.getMostSpecificCause().getMessage() != null
-                ? ex.getMostSpecificCause().getMessage().replaceAll("[\r\n]", "_") : "null";
+        String msg = sanitizeForLog(ex.getMostSpecificCause().getMessage());
         log.error("Violação de integridade no banco: {}", msg);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
             ApiResponse.error(409, "Operação viola uma regra de integridade dos dados. Verifique campos únicos.")
@@ -142,7 +142,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(EntityNotFoundException ex) {
-        String msg = ex.getMessage() != null ? ex.getMessage().replaceAll("[\r\n]", "_") : "null";
+        String msg = sanitizeForLog(ex.getMessage());
         log.warn("EntityNotFoundException: {}", msg);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
             ApiResponse.error(404, "Recurso não encontrado.")
@@ -155,10 +155,26 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
-        String msg = ex.getMessage() != null ? ex.getMessage().replaceAll("[\r\n]", "_") : "null";
+        String msg = sanitizeForLog(ex.getMessage());
         log.error("Erro interno não tratado: {}", msg, ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             ApiResponse.error(500, "Ocorreu um erro interno. Tente novamente ou contate o suporte.")
         );
+    }
+
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+
+        String sanitized = value
+                .replaceAll("[\\r\\n\\t]", "_")
+                .replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", "?");
+
+        if (sanitized.length() > MAX_LOG_MESSAGE_LENGTH) {
+            return sanitized.substring(0, MAX_LOG_MESSAGE_LENGTH) + "...[truncated]";
+        }
+
+        return sanitized;
     }
 }

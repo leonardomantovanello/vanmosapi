@@ -7,14 +7,20 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Middleware de Rate Limiting para os endpoints de login.
@@ -43,6 +49,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Value("${app.security.trusted-proxies:127.0.0.1,0:0:0:0:0:0:0:1,::1}")
+    private String trustedProxies;
+
     // Cria ou reutiliza o bucket para o IP informado
     private Bucket resolveBucket(String ip) {
         return buckets.computeIfAbsent(ip, key -> {
@@ -60,11 +69,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // Respeita o header X-Forwarded-For para IPs atrás de proxy/load balancer
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) {
-            ip = request.getRemoteAddr();
-        }
+        String ip = resolveClientIp(request);
 
         Bucket bucket = resolveBucket(ip);
 
@@ -98,5 +103,46 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return !path.equals("/api/login")
                 && !path.equals("/api/login-admin")
                 && !path.equals("/api/motoristas-admin/login");
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String remoteAddr = request.getRemoteAddr();
+        if (!isTrustedProxy(remoteAddr)) {
+            return remoteAddr;
+        }
+
+        String forwardedClientIp = extractFirstValidForwardedIp(request.getHeader("X-Forwarded-For"));
+        return forwardedClientIp != null ? forwardedClientIp : remoteAddr;
+    }
+
+    private boolean isTrustedProxy(String remoteAddr) {
+        if (remoteAddr == null || remoteAddr.isBlank()) {
+            return false;
+        }
+
+        Set<String> trusted = Arrays.stream(trustedProxies.split(","))
+                .map(String::trim)
+                .filter(proxy -> !proxy.isBlank())
+                .collect(Collectors.toSet());
+
+        return trusted.contains(remoteAddr);
+    }
+
+    private String extractFirstValidForwardedIp(String forwardedFor) {
+        if (forwardedFor == null || forwardedFor.isBlank()) {
+            return null;
+        }
+
+        String candidate = forwardedFor.split(",")[0].trim();
+        if (!candidate.matches("[0-9a-fA-F:.]{2,45}")) {
+            return null;
+        }
+
+        try {
+            InetAddress.getByName(candidate);
+            return candidate;
+        } catch (UnknownHostException ex) {
+            return null;
+        }
     }
 }

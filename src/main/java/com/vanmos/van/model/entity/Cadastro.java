@@ -20,7 +20,13 @@ import jakarta.validation.constraints.*;
  *  Portanto, SQL Injection é estruturalmente impossível nesta camada.
  */
 @Entity
-@Table(name = "cadastro")
+@Table(
+    name = "cadastro",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "UQ_cadastro_email", columnNames = "email"),
+        @UniqueConstraint(name = "UQ_cadastro_cpf",   columnNames = "cpf")
+    }
+)
 public class Cadastro {
 
     @Id
@@ -41,7 +47,7 @@ public class Cadastro {
     // CPF: aceita formatado (000.000.000-00) ou apenas dígitos (00000000000)
     @Pattern(regexp = "^(\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\d{11})$",
              message = "CPF deve estar no formato 000.000.000-00 ou conter 11 dígitos")
-    @Column(name = "cpf", length = 14, unique = true)
+    @Column(name = "cpf", length = 14)
     private String cpf;
 
     @Size(max = 20, message = "Gênero deve ter no máximo 20 caracteres")
@@ -51,7 +57,7 @@ public class Cadastro {
     @NotBlank(message = "E-mail é obrigatório")
     @Email(message = "E-mail inválido")
     @Size(max = 100, message = "E-mail deve ter no máximo 100 caracteres")
-    @Column(name = "email", length = 100, nullable = false, unique = true)
+    @Column(name = "email", length = 100, nullable = false)
     private String email;
 
     // Senha: mínimo 8 chars, ao menos 1 letra maiúscula, 1 minúscula, 1 número

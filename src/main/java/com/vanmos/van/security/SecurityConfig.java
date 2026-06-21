@@ -3,6 +3,7 @@ package com.vanmos.van.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -13,7 +14,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Configuração central de segurança da aplicação.
@@ -39,6 +43,12 @@ public class SecurityConfig {
     @Autowired
     private RateLimitFilter rateLimitFilter;
 
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:8686}")
+    private String allowedOrigins;
+
+    @Value("${app.cors.allowed-headers:Authorization,Content-Type,Accept,Origin,X-Requested-With,X-Refresh-Request}")
+    private String allowedHeaders;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         // BCrypt strength 12: ~250ms por hash — seguro contra brute force
@@ -48,20 +58,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Desabilita CSRF — desnecessário em APIs stateless com JWT
+            /*
+             * CSRF fica desabilitado porque a API e stateless e nao usa cookie
+             * como autenticador automatico: access tokens chegam no header
+             * Authorization e o refresh token chega explicitamente no body.
+             *
+             * Se access/refresh tokens migrarem para cookies HttpOnly enviados
+             * automaticamente pelo browser, habilite protecao CSRF para endpoints
+             * mutaveis ou combine SameSite=Strict/Lax com token anti-CSRF.
+             */
             .csrf(csrf -> csrf.disable())
 
             // Configuração CORS centralizada aqui (substitui CorsConfiguration.java)
             .cors(cors -> cors.configurationSource(request -> {
                 var config = new org.springframework.web.cors.CorsConfiguration();
-                config.setAllowedOrigins(java.util.List.of(
-                        "http://localhost:5173",
-                        "http://localhost:8686"
-                        // Adicione a URL de produção do frontend aqui via variável de ambiente
-                ));
+                config.setAllowedOrigins(csvToList(allowedOrigins));
                 // Apenas métodos necessários para uma API REST — sem TRACE nem CONNECT
-                config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-                config.setAllowedHeaders(java.util.List.of("*"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                config.setAllowedHeaders(csvToList(allowedHeaders));
                 config.setAllowCredentials(true);
                 return config;
             }))
@@ -163,5 +177,12 @@ public class SecurityConfig {
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private List<String> csvToList(String value) {
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .collect(Collectors.toList());
     }
 }

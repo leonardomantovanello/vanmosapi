@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Controller responsável pela renovação de tokens JWT.
@@ -41,8 +40,16 @@ public class AuthController {
     private CadastroRepository cadastroRepository;
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestBody Map<String, String> body) {
-        String refreshToken = body.get("refreshToken");
+    public ResponseEntity<?> refresh(
+            @CookieValue(name = "refreshToken", required = false) String refreshTokenCookie,
+            @RequestHeader(name = "X-Refresh-Request", required = false) String refreshRequestHeader,
+            @RequestBody(required = false) Map<String, String> body) {
+
+        String refreshTokenFromBody = body != null ? body.get("refreshToken") : null;
+        boolean cookieRefreshRequested = refreshTokenCookie != null
+                && !refreshTokenCookie.isBlank()
+                && "true".equalsIgnoreCase(refreshRequestHeader);
+        String refreshToken = cookieRefreshRequested ? refreshTokenCookie : refreshTokenFromBody;
 
         if (refreshToken == null || refreshToken.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -62,22 +69,19 @@ public class AuthController {
 
         // Busca o usuário no banco para recuperar role e userId corretos.
         // O subject é o email do usuário (definido no login).
-        Optional<Cadastro> usuarioOpt = cadastroRepository.findByEmailIgnoreCase(subject);
-        if (usuarioOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(Map.of(
-                    "sucesso", false,
-                    "mensagem", "Usuário não encontrado. Faça login novamente."
-            ));
-        }
-
-        Cadastro usuario = usuarioOpt.get();
-        // Role RESPONSAVEL é a role padrão para usuários da tabela cadastro.
-        // Motoristas e admins possuem tabelas e fluxos de login próprios.
-        String novoAccessToken = jwtUtil.generateAccessToken(subject, "RESPONSAVEL", usuario.getId());
-
-        return ResponseEntity.ok(Map.of(
-                "sucesso",      true,
-                "accessToken",  novoAccessToken
-        ));
+        return cadastroRepository.findByEmailIgnoreCase(subject)
+                .map(usuario -> {
+                    // Role RESPONSAVEL é a role padrão para usuários da tabela cadastro.
+                    // Motoristas e admins possuem tabelas e fluxos de login próprios.
+                    String novoAccessToken = jwtUtil.generateAccessToken(subject, "RESPONSAVEL", usuario.getId());
+                    return ResponseEntity.ok(Map.of(
+                            "sucesso",      true,
+                            "accessToken",  novoAccessToken
+                    ));
+                })
+                .orElseGet(() -> ResponseEntity.status(401).body(Map.of(
+                        "sucesso", false,
+                        "mensagem", "Usuário não encontrado. Faça login novamente."
+                )));
     }
 }
