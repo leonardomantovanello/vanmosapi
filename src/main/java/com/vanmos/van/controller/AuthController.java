@@ -1,7 +1,6 @@
 package com.vanmos.van.controller;
 
-import com.vanmos.van.model.entity.Cadastro;
-import com.vanmos.van.model.repository.CadastroRepository;
+import com.vanmos.van.model.repository.PassageiroRepository;
 import com.vanmos.van.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +36,7 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private CadastroRepository cadastroRepository;
+    private PassageiroRepository passageiroRepository;
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(
@@ -69,11 +68,12 @@ public class AuthController {
 
         // Busca o usuário no banco para recuperar role e userId corretos.
         // O subject é o email do usuário (definido no login).
-        return cadastroRepository.findByEmailIgnoreCase(subject)
+        return passageiroRepository.findByEmailIgnoreCase(subject)
                 .map(usuario -> {
-                    // Role RESPONSAVEL é a role padrão para usuários da tabela cadastro.
-                    // Motoristas e admins possuem tabelas e fluxos de login próprios.
-                    String novoAccessToken = jwtUtil.generateAccessToken(subject, "RESPONSAVEL", usuario.getId());
+                    // Role depende do tipo de cadastro (MOTORISTA ou PASSAGEIRO) —
+                    // mesma lógica usada no login (ver LoginController).
+                    String role = "MOTORISTA".equals(usuario.getTipo()) ? "MOTORISTA" : "RESPONSAVEL";
+                    String novoAccessToken = jwtUtil.generateAccessToken(subject, role, usuario.getId());
                     return ResponseEntity.ok(Map.of(
                             "sucesso",      true,
                             "accessToken",  novoAccessToken

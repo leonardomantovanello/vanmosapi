@@ -1,7 +1,7 @@
 package com.vanmos.van.controller;
 
-import com.vanmos.van.model.entity.Cadastro;
-import com.vanmos.van.model.service.CadastroService;
+import com.vanmos.van.model.entity.Passageiro;
+import com.vanmos.van.model.service.PassageiroService;
 import com.vanmos.van.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +12,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Controller de login para usuários (responsáveis).
+ * Controller de login para usuários da tabela passageiros — tanto
+ * responsável/passageiro quanto motorista, diferenciados por Passageiro.tipo
+ * (MOTORISTA ou PASSAGEIRO). Ver LoginController#login para a atribuição de role.
  *
  * MUDANÇAS APLICADAS:
  *  1. BCrypt: senha comparada com passwordEncoder.matches() — nunca em plaintext.
@@ -30,7 +32,7 @@ import java.util.Map;
 public class LoginController {
 
     @Autowired
-    private CadastroService cadastroService;
+    private PassageiroService passageiroService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -51,7 +53,7 @@ public class LoginController {
         }
 
         // Busca o usuário por email ou CPF via query no banco (não mais findAll em memória)
-        Cadastro usuario = cadastroService.findByEmailOrCpf(emailOuCpf.trim());
+        Passageiro usuario = passageiroService.findByEmailOrCpf(emailOuCpf.trim());
 
         // Mensagem genérica para não revelar se o usuário existe ou não (user enumeration)
         if (usuario == null) {
@@ -76,14 +78,19 @@ public class LoginController {
             ));
         }
 
+        // Role depende do tipo de cadastro — mesma tabela serve motorista e
+        // passageiro, diferenciados pela coluna "tipo".
+        String role = "MOTORISTA".equals(usuario.getTipo()) ? "MOTORISTA" : "RESPONSAVEL";
+
         // Gera os tokens JWT
-        String accessToken  = jwtUtil.generateAccessToken(usuario.getEmail(), "RESPONSAVEL", usuario.getId());
+        String accessToken  = jwtUtil.generateAccessToken(usuario.getEmail(), role, usuario.getId());
         String refreshToken = jwtUtil.generateRefreshToken(usuario.getEmail());
 
         Map<String, Object> usuarioInfo = new HashMap<>();
         usuarioInfo.put("id",    usuario.getId());
         usuarioInfo.put("nome",  usuario.getNome());
         usuarioInfo.put("email", usuario.getEmail());
+        usuarioInfo.put("tipo",  usuario.getTipo());
 
         return ResponseEntity.ok(Map.of(
                 "sucesso",       true,

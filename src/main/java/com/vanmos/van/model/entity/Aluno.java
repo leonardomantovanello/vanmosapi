@@ -41,7 +41,7 @@ public class Aluno {
     @Column(name = "ativo")
     private boolean ativo;
 
-    // FK para cadastro.id — Cadastro é quem de fato autentica como RESPONSAVEL
+    // FK para passageiros.id — Passageiro é quem de fato autentica como RESPONSAVEL
     // (ver LoginController); a tabela "responsaveis" é um cadastro de perfil
     // separado que nenhum fluxo de login usa hoje.
     @Column(name = "responsavel_id")

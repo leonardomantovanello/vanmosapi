@@ -120,26 +120,26 @@ public class SecurityConfig {
             // Definição de quais rotas são públicas e quais exigem autenticação
             .authorizeHttpRequests(auth -> auth
                     // Rotas públicas — não exigem token
-                    // IMPORTANTE: "/api/cadastro" aqui é só o cadastro público (POST). Um
+                    // IMPORTANTE: "/api/passageiros" aqui é só o cadastro público (POST). Um
                     // requestMatcher sem HttpMethod casa com QUALQUER verbo — listar GET
                     // ficava acidentalmente público também até essa correção, pois essa
                     // regra é avaliada antes da regra ROLE_ADMIN mais específica abaixo.
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login", "/api/login-admin",
-                            "/api/cadastro", "/api/auth/refresh", "/api/motoristas-admin/login")
+                            "/api/passageiros", "/api/auth/refresh", "/api/motoristas-admin/login")
                     .permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET,
-                            "/api/cadastro/verificar-email", "/api/motoristas-admin/publico")
+                            "/api/passageiros/verificar-email", "/api/motoristas-admin/publico")
                     .permitAll()
 
                     // Rotas exclusivas de administrador
                     .requestMatchers(
                             "/api/motoristas-admin/**",
-                            "/api/cadastro/*/ativar",
-                            "/api/cadastro/*/inativar"
+                            "/api/passageiros/*/ativar",
+                            "/api/passageiros/*/inativar"
                     ).hasRole("ADMIN")
 
-                    // Listagem geral de cadastros: apenas ADMIN
-                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/cadastro")
+                    // Listagem geral de passageiros: apenas ADMIN
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/passageiros")
                     .hasRole("ADMIN")
 
                     // Motoristas: leitura para ADMIN e MOTORISTA; escrita apenas ADMIN

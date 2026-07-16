@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  *
  * PROBLEMA RESOLVIDO — IDOR (Insecure Direct Object Reference):
  *  Sem esta verificação, um usuário autenticado com id=10 poderia fazer:
- *    PUT /api/cadastro/99  → alterando dados de outro usuário
+ *    PUT /api/passageiros/99  → alterando dados de outro usuário
  *    DELETE /api/alunos/5  → deletando aluno de outro motorista
  *  O Spring Security garante que o usuário está autenticado, mas NÃO
  *  verifica se o recurso pertence a ele. Essa é nossa responsabilidade.
@@ -73,7 +73,7 @@ public class OwnershipValidator {
     /**
      * Valida que o ID do recurso na URL corresponde ao ID do usuário autenticado.
      *
-     * CASO DE USO PRINCIPAL: PUT /api/cadastro/{id}
+     * CASO DE USO PRINCIPAL: PUT /api/passageiros/{id}
      *  O userId extraído do JWT deve ser igual ao {id} da URL.
      *  Impede que usuário A altere o cadastro do usuário B.
      *

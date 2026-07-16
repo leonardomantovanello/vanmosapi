@@ -21,13 +21,13 @@ import jakarta.validation.constraints.*;
  */
 @Entity
 @Table(
-    name = "cadastro",
+    name = "passageiros",
     uniqueConstraints = {
-        @UniqueConstraint(name = "UQ_cadastro_email", columnNames = "email"),
-        @UniqueConstraint(name = "UQ_cadastro_cpf",   columnNames = "cpf")
+        @UniqueConstraint(name = "UQ_passageiros_email", columnNames = "email"),
+        @UniqueConstraint(name = "UQ_passageiros_cpf",   columnNames = "cpf")
     }
 )
-public class Cadastro {
+public class Passageiro {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -73,6 +73,15 @@ public class Cadastro {
     @Column(name = "ativo")
     private boolean ativo;
 
+    // Discriminador de papel dentro da mesma tabela — já existia como coluna
+    // e CHECK constraint no banco (CK__cadastro__tipo), mas nunca tinha sido
+    // mapeado aqui: toda linha ficava com tipo NULL e o LoginController
+    // atribuía a role RESPONSAVEL pra qualquer um, motorista ou passageiro.
+    @NotBlank(message = "Tipo é obrigatório")
+    @Pattern(regexp = "^(MOTORISTA|PASSAGEIRO)$", message = "Tipo deve ser MOTORISTA ou PASSAGEIRO")
+    @Column(name = "tipo", length = 20, nullable = false)
+    private String tipo;
+
     public boolean getAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
 
@@ -99,4 +108,7 @@ public class Cadastro {
 
     public boolean isAceitouTermos() { return aceitouTermos; }
     public void setAceitouTermos(boolean aceitouTermos) { this.aceitouTermos = aceitouTermos; }
+
+    public String getTipo() { return tipo; }
+    public void setTipo(String tipo) { this.tipo = tipo; }
 }
