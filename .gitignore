@@ -44,3 +44,7 @@ mvnw.cmd
 .DS_Store
 Thumbs.db
 
+# Local env / secrets (use application.properties.example as template)
+.env
+.env.*
+application-local.properties

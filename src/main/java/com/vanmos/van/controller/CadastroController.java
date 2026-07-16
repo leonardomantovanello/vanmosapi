@@ -36,7 +36,9 @@ public class CadastroController {
     // Protegido por ROLE_ADMIN no SecurityConfig
     @GetMapping
     public ResponseEntity<ApiResponse<List<Cadastro>>> listarTodos() {
-        return ResponseEntity.ok(ApiResponse.ok("Cadastros listados.", cadastroService.findAll()));
+        List<Cadastro> lista = cadastroService.findAll();
+        lista.forEach(c -> c.setSenha(null));
+        return ResponseEntity.ok(ApiResponse.ok("Cadastros listados.", lista));
     }
 
     @GetMapping("/{id}")
@@ -72,14 +74,14 @@ public class CadastroController {
     }
 
     // Protegido por ROLE_ADMIN no SecurityConfig
-    @PutMapping("/{id}/ativar")
+    @RequestMapping(value = "/{id}/ativar", method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<Void>> ativarPerfil(@PathVariable Long id) {
         cadastroService.updateCodStatus(id);
         return ResponseEntity.ok(ApiResponse.noContent("Usuário ativado com sucesso."));
     }
 
     // Protegido por ROLE_ADMIN no SecurityConfig
-    @PutMapping("/{id}/inativar")
+    @RequestMapping(value = "/{id}/inativar", method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<Void>> inativarPerfil(@PathVariable Long id) {
         cadastroService.inativarCadastro(id);
         return ResponseEntity.ok(ApiResponse.noContent("Usuário inativado com sucesso."));

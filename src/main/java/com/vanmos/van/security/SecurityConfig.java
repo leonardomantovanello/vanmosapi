@@ -69,6 +69,18 @@ public class SecurityConfig {
              */
             .csrf(csrf -> csrf.disable())
 
+            // Headers de segurança — API JSON pura, mas nada impede que a resposta
+            // seja aberta dentro de um <iframe>/carregada como script em outro contexto.
+            .headers(headers -> headers
+                    .contentTypeOptions(contentTypeOptions -> {})
+                    .frameOptions(frameOptions -> frameOptions.deny())
+                    .referrerPolicy(referrer -> referrer
+                            .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                    .httpStrictTransportSecurity(hsts -> hsts
+                            .includeSubDomains(true)
+                            .maxAgeInSeconds(31536000))
+            )
+
             // Configuração CORS centralizada aqui (substitui CorsConfiguration.java)
             .cors(cors -> cors.configurationSource(request -> {
                 var config = new org.springframework.web.cors.CorsConfiguration();
@@ -108,13 +120,16 @@ public class SecurityConfig {
             // Definição de quais rotas são públicas e quais exigem autenticação
             .authorizeHttpRequests(auth -> auth
                     // Rotas públicas — não exigem token
-                    .requestMatchers(
-                            "/api/login",
-                            "/api/login-admin",
-                            "/api/cadastro",
-                            "/api/auth/refresh",
-                            "/api/motoristas-admin/login"
-                    ).permitAll()
+                    // IMPORTANTE: "/api/cadastro" aqui é só o cadastro público (POST). Um
+                    // requestMatcher sem HttpMethod casa com QUALQUER verbo — listar GET
+                    // ficava acidentalmente público também até essa correção, pois essa
+                    // regra é avaliada antes da regra ROLE_ADMIN mais específica abaixo.
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login", "/api/login-admin",
+                            "/api/cadastro", "/api/auth/refresh", "/api/motoristas-admin/login")
+                    .permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET,
+                            "/api/cadastro/verificar-email", "/api/motoristas-admin/publico")
+                    .permitAll()
 
                     // Rotas exclusivas de administrador
                     .requestMatchers(

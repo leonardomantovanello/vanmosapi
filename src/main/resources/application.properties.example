@@ -1,0 +1,25 @@
+# Copie para uma fonte de variáveis de ambiente local (NUNCA para application.properties)
+# e preencha com valores reais. Ex.: exporte no shell, no run config da IDE, ou num
+# arquivo application-local.properties (já ignorado pelo git) carregado via
+# --spring.profiles.active=local.
+
+DB_URL=jdbc:sqlserver://SEU_HOST:1433;databaseName=SEU_BANCO;encrypt=true;trustServerCertificate=true
+DB_USERNAME=
+DB_PASSWORD=
+
+# Gere com: openssl rand -base64 64
+JWT_SECRET=
+
+JWT_EXPIRATION_MS=900000
+JWT_REFRESH_EXPIRATION_MS=604800000
+
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8686
+CORS_ALLOWED_HEADERS=Authorization,Content-Type,Accept,Origin,X-Requested-With,X-Refresh-Request
+
+TRUSTED_PROXIES=127.0.0.1,0:0:0:0:0:0:0:1,::1
+
+DB_POOL_MAX=5
+DB_POOL_MIN=2
+DB_POOL_TIMEOUT=20000
+DB_POOL_IDLE=300000
+DB_POOL_LIFETIME=600000

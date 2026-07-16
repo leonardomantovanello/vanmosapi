@@ -48,6 +48,11 @@ public class AlunoService {
         return alunoRepository.findById(id);
     }
 
+    @Transactional(readOnly = true)
+    public List<Aluno> findByResponsavelId(Long responsavelId) {
+        return alunoRepository.findByResponsavelId(responsavelId);
+    }
+
     public Aluno save(Aluno aluno) {
         try {
             return alunoRepository.save(aluno);
@@ -70,6 +75,9 @@ public class AlunoService {
             existente.setEnderecoDesembarque(aluno.getEnderecoDesembarque());
             existente.setEscola(aluno.getEscola());
             existente.setTurno(aluno.getTurno());
+            if (aluno.getResponsavelId() != null) {
+                existente.setResponsavelId(aluno.getResponsavelId());
+            }
             return alunoRepository.save(existente);
         } catch (DataIntegrityViolationException ex) {
             log.error("Violação de integridade ao atualizar Aluno {}: {}", id, ex.getMostSpecificCause().getMessage());

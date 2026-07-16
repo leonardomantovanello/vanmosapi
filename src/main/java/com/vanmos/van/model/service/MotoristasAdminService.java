@@ -23,6 +23,10 @@ public class MotoristasAdminService {
     public List<MotoristasAdmin> findAll() {
         return motoristasAdminRepository.findAll();
     }
+
+    public List<MotoristasAdmin> findAtivos() {
+        return motoristasAdminRepository.findByAtivoTrue();
+    }
     
     public Optional<MotoristasAdmin> findById(Long id) {
         return motoristasAdminRepository.findById(id);

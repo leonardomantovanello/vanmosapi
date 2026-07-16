@@ -20,13 +20,19 @@ public class MotoristaController {
     @Autowired private OwnershipValidator ownership;
     @Autowired private JwtUtil            jwtUtil;
 
+    // Lista completa com PII (cpf, cnh, telefone) de todos os motoristas: só ADMIN.
     @GetMapping
     public ResponseEntity<ApiResponse<List<Motorista>>> listarTodos() {
+        ownership.requireAdmin();
         return ResponseEntity.ok(ApiResponse.ok("Motoristas listados.", motoristaService.findAll()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Motorista>> buscarPorId(@PathVariable Long id) {
+        // Ponto 2: motorista só vê o próprio perfil; ADMIN vê qualquer um
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "motorista");
+
         Motorista m = motoristaService.findById(id)
                 .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Motorista", id));
         return ResponseEntity.ok(ApiResponse.ok("Motorista encontrado.", m));

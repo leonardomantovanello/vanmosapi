@@ -27,9 +27,9 @@
 		<url/>
 	</scm>
 	<properties>
-		<!-- Atualizado de 17 para 21 (LTS compatível com Spring Boot 3.5.x)
-		     O ambiente possui JDK 25 que é retrocompatível com bytecode 21 -->
-		<java.version>25</java.version>
+		<!-- 17 = LTS instalado no ambiente de dev atual (verificado via `java -version`);
+		     ajuste para 21 se todas as 3 IDEs/o build do Render usarem um JDK mais novo -->
+		<java.version>17</java.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -44,6 +44,16 @@
 			<groupId>com.microsoft.sqlserver</groupId>
 			<artifactId>mssql-jdbc</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Flyway: migrations versionadas em vez de ddl-auto=update em produção -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-sqlserver</artifactId>
 		</dependency>
 
 		<!-- Spring Security: autenticação e autorização -->

@@ -1,6 +1,7 @@
 package com.vanmos.van.controller;
 
 import com.vanmos.van.dto.ApiResponse;
+import com.vanmos.van.dto.MotoristaPublicoDTO;
 import com.vanmos.van.exception.ResourceNotFoundException;
 import com.vanmos.van.model.entity.MotoristasAdmin;
 import com.vanmos.van.model.service.MotoristasAdminService;
@@ -40,6 +41,17 @@ public class MotoristasAdminController {
         List<MotoristasAdmin> lista = motoristasAdminService.findAll();
         // Remove senhas da resposta
         lista.forEach(m -> m.setSenha(null));
+        return ResponseEntity.ok(ApiResponse.ok("Motoristas listados.", lista));
+    }
+
+    // Rota pública (ver SecurityConfig) — só campos sem PII, para a página
+    // pública "Nossos Motoristas". Não usar a listagem completa acima aqui:
+    // ela expõe cpf/cnh/gmail e exige ROLE_ADMIN de propósito.
+    @GetMapping("/publico")
+    public ResponseEntity<ApiResponse<List<MotoristaPublicoDTO>>> listarPublico() {
+        List<MotoristaPublicoDTO> lista = motoristasAdminService.findAtivos().stream()
+                .map(MotoristaPublicoDTO::from)
+                .toList();
         return ResponseEntity.ok(ApiResponse.ok("Motoristas listados.", lista));
     }
 
@@ -143,7 +155,7 @@ public class MotoristasAdminController {
     }
 
     // Protegido por ROLE_ADMIN no SecurityConfig
-    @PutMapping("/{id}/ativar")
+    @RequestMapping(value = "/{id}/ativar", method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<Void>> ativar(@PathVariable Long id) {
         MotoristasAdmin m = motoristasAdminService.ativar(id);
         if (m == null) throw new ResourceNotFoundException("Motorista", id);
@@ -151,7 +163,7 @@ public class MotoristasAdminController {
     }
 
     // Protegido por ROLE_ADMIN no SecurityConfig
-    @PutMapping("/{id}/inativar")
+    @RequestMapping(value = "/{id}/inativar", method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<Void>> inativar(@PathVariable Long id) {
         MotoristasAdmin m = motoristasAdminService.inativar(id);
         if (m == null) throw new ResourceNotFoundException("Motorista", id);

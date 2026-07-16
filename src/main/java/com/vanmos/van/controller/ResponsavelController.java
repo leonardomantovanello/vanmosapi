@@ -20,13 +20,19 @@ public class ResponsavelController {
     @Autowired private OwnershipValidator  ownership;
     @Autowired private JwtUtil             jwtUtil;
 
+    // Lista completa com PII de todos os responsáveis: só ADMIN.
     @GetMapping
     public ResponseEntity<ApiResponse<List<Responsavel>>> listarTodos() {
+        ownership.requireAdmin();
         return ResponseEntity.ok(ApiResponse.ok("Responsáveis listados.", responsavelService.findAll()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Responsavel>> buscarPorId(@PathVariable Long id) {
+        // Ponto 2: responsável só vê o próprio registro; ADMIN vê qualquer um
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "responsável");
+
         Responsavel r = responsavelService.findById(id)
                 .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Responsavel", id));
         return ResponseEntity.ok(ApiResponse.ok("Responsável encontrado.", r));

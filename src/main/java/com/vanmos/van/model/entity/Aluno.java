@@ -41,6 +41,12 @@ public class Aluno {
     @Column(name = "ativo")
     private boolean ativo;
 
+    // FK para cadastro.id — Cadastro é quem de fato autentica como RESPONSAVEL
+    // (ver LoginController); a tabela "responsaveis" é um cadastro de perfil
+    // separado que nenhum fluxo de login usa hoje.
+    @Column(name = "responsavel_id")
+    private Long responsavelId;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -64,4 +70,7 @@ public class Aluno {
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public Long getResponsavelId() { return responsavelId; }
+    public void setResponsavelId(Long responsavelId) { this.responsavelId = responsavelId; }
 }

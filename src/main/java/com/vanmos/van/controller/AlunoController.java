@@ -3,6 +3,8 @@ package com.vanmos.van.controller;
 import com.vanmos.van.dto.ApiResponse;
 import com.vanmos.van.model.entity.Aluno;
 import com.vanmos.van.model.service.AlunoService;
+import com.vanmos.van.security.JwtUtil;
+import com.vanmos.van.security.OwnershipValidator;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,21 +16,25 @@ import java.util.List;
  * Todas as respostas usam ApiResponse<T> — formato único e previsível.
  *
  * PROPRIEDADE DE RECURSO (ponto 2):
- *  Alunos pertencem a um motorista. A verificação completa de propriedade
- *  requer uma FK motorista_id na tabela alunos (melhoria futura de schema).
- *  Por ora, apenas ADMINs e MOTORISTAs autenticados acessam este recurso
- *  (garantido pelo SecurityConfig — .anyRequest().authenticated()).
- *  Quando a FK for adicionada, injete OwnershipValidator e valide aqui.
+ *  Alunos têm responsavel_id (FK para cadastro.id — quem loga como RESPONSAVEL).
+ *  RESPONSAVEL só lista/vê os próprios alunos. ADMIN/MOTORISTA veem todos —
+ *  ainda não existe FK motorista_id/van_id para restringir por rota do motorista
+ *  (melhoria futura de schema).
  */
 @RestController
 @RequestMapping("/api/alunos")
 public class AlunoController {
 
-    @Autowired
-    private AlunoService alunoService;
+    @Autowired private AlunoService       alunoService;
+    @Autowired private OwnershipValidator ownership;
+    @Autowired private JwtUtil            jwtUtil;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Aluno>>> listarTodos() {
+        if ("RESPONSAVEL".equals(ownership.getCurrentRole())) {
+            Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+            return ResponseEntity.ok(ApiResponse.ok("Alunos listados.", alunoService.findByResponsavelId(currentUserId)));
+        }
         return ResponseEntity.ok(ApiResponse.ok("Alunos listados.", alunoService.findAll()));
     }
 
@@ -36,6 +42,11 @@ public class AlunoController {
     public ResponseEntity<ApiResponse<Aluno>> buscarPorId(@PathVariable Long id) {
         Aluno aluno = alunoService.findById(id)
                 .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Aluno", id));
+
+        if ("RESPONSAVEL".equals(ownership.getCurrentRole())) {
+            Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+            ownership.validateOwnership(aluno.getResponsavelId(), currentUserId, "aluno");
+        }
         return ResponseEntity.ok(ApiResponse.ok("Aluno encontrado.", aluno));
     }
 
