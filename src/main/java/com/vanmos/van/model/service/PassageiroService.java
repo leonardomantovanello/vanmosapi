@@ -52,7 +52,8 @@ public class PassageiroService {
     }
 
     private void validarCpf(Passageiro passageiro) {
-        if (passageiro.getCpf() != null && !cpfValido(passageiro.getCpf())) {
+        if (passageiro.getCpf() == null || passageiro.getCpf().isBlank()) return;
+        if (!cpfValido(passageiro.getCpf())) {
             throw new IllegalArgumentException("CPF incorreto");
         }
     }
@@ -113,6 +114,19 @@ public class PassageiroService {
             existente.setSenha(passwordEncoder.encode(passageiro.getSenha()));
         }
         return passageiroRepository.save(existente);
+    }
+
+    @Transactional
+    public void alterarSenha(Long id, String senhaAtual, String novaSenha) {
+        Passageiro existente = passageiroRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Passageiro não encontrado: " + id));
+
+        if (!passwordEncoder.matches(senhaAtual, existente.getSenha())) {
+            throw new com.vanmos.van.exception.ValidationException("Senha atual incorreta");
+        }
+
+        existente.setSenha(passwordEncoder.encode(novaSenha));
+        passageiroRepository.save(existente);
     }
 
     @Transactional

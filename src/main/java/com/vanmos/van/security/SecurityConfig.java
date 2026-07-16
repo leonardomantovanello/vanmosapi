@@ -142,6 +142,12 @@ public class SecurityConfig {
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/passageiros")
                     .hasRole("ADMIN")
 
+                    // Cadastro de passageiro pelo painel do motorista — não é o
+                    // autocadastro público (esse é "/api/passageiros" sem sufixo, já
+                    // liberado acima). Senha gerada pelo backend, sem aprovação de admin.
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/passageiros/cadastrar-motorista")
+                    .hasAnyRole("ADMIN", "MOTORISTA")
+
                     // Motoristas: leitura para ADMIN e MOTORISTA; escrita apenas ADMIN
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas", "/api/motoristas/**")
                     .hasAnyRole("ADMIN", "MOTORISTA")

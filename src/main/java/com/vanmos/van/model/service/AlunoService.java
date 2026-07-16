@@ -53,6 +53,11 @@ public class AlunoService {
         return alunoRepository.findByResponsavelId(responsavelId);
     }
 
+    @Transactional(readOnly = true)
+    public List<Aluno> findByMotoristaId(Long motoristaId) {
+        return alunoRepository.findByMotoristaId(motoristaId);
+    }
+
     public Aluno save(Aluno aluno) {
         try {
             return alunoRepository.save(aluno);
@@ -77,6 +82,9 @@ public class AlunoService {
             existente.setTurno(aluno.getTurno());
             if (aluno.getResponsavelId() != null) {
                 existente.setResponsavelId(aluno.getResponsavelId());
+            }
+            if (aluno.getMotoristaId() != null) {
+                existente.setMotoristaId(aluno.getMotoristaId());
             }
             return alunoRepository.save(existente);
         } catch (DataIntegrityViolationException ex) {

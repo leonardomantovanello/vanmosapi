@@ -31,9 +31,14 @@ public class AlunoController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Aluno>>> listarTodos() {
-        if ("RESPONSAVEL".equals(ownership.getCurrentRole())) {
+        String role = ownership.getCurrentRole();
+        if ("RESPONSAVEL".equals(role)) {
             Long currentUserId = ownership.getCurrentUserId(jwtUtil);
             return ResponseEntity.ok(ApiResponse.ok("Alunos listados.", alunoService.findByResponsavelId(currentUserId)));
+        }
+        if ("MOTORISTA".equals(role)) {
+            Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+            return ResponseEntity.ok(ApiResponse.ok("Alunos listados.", alunoService.findByMotoristaId(currentUserId)));
         }
         return ResponseEntity.ok(ApiResponse.ok("Alunos listados.", alunoService.findAll()));
     }
@@ -43,15 +48,25 @@ public class AlunoController {
         Aluno aluno = alunoService.findById(id)
                 .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Aluno", id));
 
-        if ("RESPONSAVEL".equals(ownership.getCurrentRole())) {
+        String role = ownership.getCurrentRole();
+        if ("RESPONSAVEL".equals(role)) {
             Long currentUserId = ownership.getCurrentUserId(jwtUtil);
             ownership.validateOwnership(aluno.getResponsavelId(), currentUserId, "aluno");
+        } else if ("MOTORISTA".equals(role)) {
+            Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+            ownership.validateOwnership(aluno.getMotoristaId(), currentUserId, "aluno");
         }
         return ResponseEntity.ok(ApiResponse.ok("Aluno encontrado.", aluno));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<Aluno>> criar(@Valid @RequestBody Aluno aluno) {
+        // O motorista logado é sempre o dono do aluno que está cadastrando —
+        // nunca confiar em motoristaId vindo do corpo da requisição, senão
+        // um motorista poderia atribuir o aluno a qualquer outro motorista.
+        if ("MOTORISTA".equals(ownership.getCurrentRole())) {
+            aluno.setMotoristaId(ownership.getCurrentUserId(jwtUtil));
+        }
         return ResponseEntity.status(201).body(
             ApiResponse.created("Aluno criado com sucesso.", alunoService.save(aluno))
         );
@@ -60,6 +75,16 @@ public class AlunoController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Aluno>> atualizar(
             @PathVariable Long id, @Valid @RequestBody Aluno aluno) {
+
+        String role = ownership.getCurrentRole();
+        if ("MOTORISTA".equals(role)) {
+            Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+            Aluno existente = alunoService.findById(id)
+                    .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Aluno", id));
+            ownership.validateOwnership(existente.getMotoristaId(), currentUserId, "aluno");
+            // Motorista não pode transferir o aluno pra outro motorista via update
+            aluno.setMotoristaId(currentUserId);
+        }
         return ResponseEntity.ok(
             ApiResponse.ok("Aluno atualizado.", alunoService.update(id, aluno))
         );
@@ -67,6 +92,13 @@ public class AlunoController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
+        String role = ownership.getCurrentRole();
+        if ("MOTORISTA".equals(role)) {
+            Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+            Aluno existente = alunoService.findById(id)
+                    .orElseThrow(() -> new com.vanmos.van.exception.ResourceNotFoundException("Aluno", id));
+            ownership.validateOwnership(existente.getMotoristaId(), currentUserId, "aluno");
+        }
         alunoService.deleteById(id);
         return ResponseEntity.ok(ApiResponse.noContent("Aluno removido."));
     }

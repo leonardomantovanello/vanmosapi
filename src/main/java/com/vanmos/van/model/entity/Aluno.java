@@ -16,8 +16,10 @@ public class Aluno {
     @Column(name = "nome", length = 100, nullable = false)
     private String nome;
 
-    @Pattern(regexp = "^(\\(\\d{2}\\)\\s?)?\\d{4,5}-?\\d{4}$",
-             message = "Telefone inválido")
+    // Dígitos apenas (sem parênteses/hífen/espaço) — normalizado antes de
+    // salvar (ver PassageiroController.cadastrarPeloMotorista), pra não
+    // depender do motorista digitar num formato exato específico.
+    @Pattern(regexp = "^\\d{10,11}$", message = "Telefone inválido — informe DDD + número (10 ou 11 dígitos)")
     @Column(name = "telefone_responsavel", length = 15)
     private String telefoneResponsavel;
 
@@ -47,6 +49,12 @@ public class Aluno {
     @Column(name = "responsavel_id")
     private Long responsavelId;
 
+    // FK para passageiros.id (tipo=MOTORISTA) — o motorista que cadastrou este
+    // aluno. Escopa a visibilidade: cada motorista só vê/gerencia os próprios
+    // alunos (ver AlunoController), em vez de todos os alunos do sistema.
+    @Column(name = "motorista_id")
+    private Long motoristaId;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -73,4 +81,7 @@ public class Aluno {
 
     public Long getResponsavelId() { return responsavelId; }
     public void setResponsavelId(Long responsavelId) { this.responsavelId = responsavelId; }
+
+    public Long getMotoristaId() { return motoristaId; }
+    public void setMotoristaId(Long motoristaId) { this.motoristaId = motoristaId; }
 }
