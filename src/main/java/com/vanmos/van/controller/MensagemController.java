@@ -13,6 +13,7 @@ import com.vanmos.van.security.OwnershipValidator;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,11 @@ import java.util.List;
  * em memória no app (MOCK_MESSAGES), sem persistência e sem separação real
  * por conversa. Cada aluno tem exatamente uma thread, visível para o
  * motorista que o cadastrou e para o responsável vinculado a ele.
+ *
+ * Envio continua sendo por REST (mantém toda a validação/ownership abaixo
+ * numa única porta de entrada); depois de persistir, a mensagem também é
+ * publicada em /topic/mensagens/aluno/{alunoId} via STOMP para entrega em
+ * tempo real — ver StompAuthInterceptor para quem pode assinar esse tópico.
  */
 @RestController
 @RequestMapping("/api/mensagens")
@@ -31,6 +37,7 @@ public class MensagemController {
     @Autowired private AlunoService    alunoService;
     @Autowired private JwtUtil         jwtUtil;
     @Autowired private OwnershipValidator ownership;
+    @Autowired private SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/aluno/{alunoId}")
     public ResponseEntity<ApiResponse<List<Mensagem>>> listar(@PathVariable Long alunoId) {
@@ -47,6 +54,7 @@ public class MensagemController {
         Long remetenteId = ownership.getCurrentUserId(jwtUtil);
 
         Mensagem enviada = mensagemService.enviar(aluno.getId(), remetenteTipo, remetenteId, request.texto());
+        messagingTemplate.convertAndSend("/topic/mensagens/aluno/" + aluno.getId(), enviada);
         return ResponseEntity.status(201).body(ApiResponse.created("Mensagem enviada.", enviada));
     }
 

@@ -131,6 +131,12 @@ public class SecurityConfig {
                             "/api/passageiros/verificar-email", "/api/motoristas-admin/publico")
                     .permitAll()
 
+                    // Handshake do WebSocket/STOMP (chat e localização em tempo real) —
+                    // fica público na camada HTTP porque a autenticação de verdade
+                    // acontece por mensagem no StompAuthInterceptor (o token chega no
+                    // frame CONNECT do STOMP, não como header HTTP nessa fase).
+                    .requestMatchers("/ws/**").permitAll()
+
                     // Rotas exclusivas de administrador
                     .requestMatchers(
                             "/api/motoristas-admin/**",
