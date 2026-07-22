@@ -33,6 +33,12 @@ public class MotoristasAdmin {
     @Column(name = "ativo")
     private boolean ativo = true;
 
+    // Foto de perfil como data URI base64 ("data:image/jpeg;base64,...") —
+    // sem storage de arquivos configurado no projeto (ver V9). NULL é um
+    // estado válido (sem foto).
+    @Column(name = "avatar_base64", columnDefinition = "NVARCHAR(MAX)")
+    private String avatarBase64;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -59,4 +65,7 @@ public class MotoristasAdmin {
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public String getAvatarBase64() { return avatarBase64; }
+    public void setAvatarBase64(String avatarBase64) { this.avatarBase64 = avatarBase64; }
 }

@@ -82,6 +82,12 @@ public class Passageiro {
     @Column(name = "tipo", length = 20, nullable = false)
     private String tipo;
 
+    // Foto de perfil como data URI base64 ("data:image/jpeg;base64,...") —
+    // sem storage de arquivos configurado no projeto (ver V9). NULL é um
+    // estado válido (sem foto).
+    @Column(name = "avatar_base64", columnDefinition = "NVARCHAR(MAX)")
+    private String avatarBase64;
+
     public boolean getAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
 
@@ -111,4 +117,7 @@ public class Passageiro {
 
     public String getTipo() { return tipo; }
     public void setTipo(String tipo) { this.tipo = tipo; }
+
+    public String getAvatarBase64() { return avatarBase64; }
+    public void setAvatarBase64(String avatarBase64) { this.avatarBase64 = avatarBase64; }
 }

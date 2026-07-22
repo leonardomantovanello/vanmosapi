@@ -1,5 +1,6 @@
 package com.vanmos.van.controller;
 
+import com.vanmos.van.dto.AlterarSenhaRequest;
 import com.vanmos.van.dto.ApiResponse;
 import com.vanmos.van.dto.MotoristaPublicoDTO;
 import com.vanmos.van.exception.ResourceNotFoundException;
@@ -95,6 +96,19 @@ public class MotoristasAdminController {
         MotoristasAdmin atualizado = motoristasAdminService.update(id, motorista);
         atualizado.setSenha(null);
         return ResponseEntity.ok(ApiResponse.ok("Motorista atualizado.", atualizado));
+    }
+
+    // Troca de senha self-service — mesmo padrão de
+    // PassageiroController#alterarSenha (exige a senha atual).
+    @PutMapping("/{id}/senha")
+    public ResponseEntity<ApiResponse<Void>> alterarSenha(
+            @PathVariable Long id, @Valid @RequestBody AlterarSenhaRequest request) {
+
+        Long currentUserId = ownership.getCurrentUserId(jwtUtil);
+        ownership.validateOwnership(id, currentUserId, "motorista");
+
+        motoristasAdminService.alterarSenha(id, request.senhaAtual(), request.novaSenha());
+        return ResponseEntity.ok(ApiResponse.noContent("Senha alterada com sucesso."));
     }
 
     // Protegido por ROLE_ADMIN no SecurityConfig

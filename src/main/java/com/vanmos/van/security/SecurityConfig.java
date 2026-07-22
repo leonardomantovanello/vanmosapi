@@ -137,6 +137,19 @@ public class SecurityConfig {
                     // frame CONNECT do STOMP, não como header HTTP nessa fase).
                     .requestMatchers("/ws/**").permitAll()
 
+                    // Motoristas-admin: GET/PUT em /{id} e /{id}/senha são o
+                    // próprio motorista vendo/editando o próprio perfil — a
+                    // ownership real (só o próprio motorista ou ADMIN) é
+                    // validada dentro de MotoristasAdminController. Listar
+                    // todos, criar, ativar/inativar e deletar continuam
+                    // exclusivos de ADMIN (caem no requestMatchers "**" logo
+                    // abaixo, que não casa com esses dois padrões de 1 segmento).
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas-admin/*")
+                    .authenticated()
+                    .requestMatchers(org.springframework.http.HttpMethod.PUT,
+                            "/api/motoristas-admin/*", "/api/motoristas-admin/*/senha")
+                    .authenticated()
+
                     // Rotas exclusivas de administrador
                     .requestMatchers(
                             "/api/motoristas-admin/**",

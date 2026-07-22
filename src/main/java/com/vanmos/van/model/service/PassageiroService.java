@@ -113,6 +113,11 @@ public class PassageiroService {
         if (passageiro.getSenha() != null && !passageiro.getSenha().isBlank()) {
             existente.setSenha(passwordEncoder.encode(passageiro.getSenha()));
         }
+        // Diferente dos campos acima, null aqui é um valor válido ("sem
+        // foto") — não "não veio no request". O app sempre reenvia o avatar
+        // atual inteiro a cada save (ver profileService.ts), então
+        // sobrescrever sem guarda de blank é seguro e correto.
+        existente.setAvatarBase64(passageiro.getAvatarBase64());
         return passageiroRepository.save(existente);
     }
 
