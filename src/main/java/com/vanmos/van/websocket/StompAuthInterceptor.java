@@ -14,8 +14,9 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,14 +32,15 @@ import java.util.regex.Pattern;
  *              pedido, replicando a mesma regra de ownership que já existe
  *              em MensagemController/AlunoController pros endpoints REST
  *              equivalentes. Sem essa checagem, qualquer usuário autenticado
- *              poderia assinar o chat/localização de qualquer outra família
+ *              poderia assinar o chat de qualquer outra família
  *              (IDOR).
  */
 @Component
 public class StompAuthInterceptor implements ChannelInterceptor {
 
+    private static final Logger log = LoggerFactory.getLogger(StompAuthInterceptor.class);
+
     private static final Pattern MENSAGENS_TOPIC = Pattern.compile("^/topic/mensagens/aluno/(\\d+)$");
-    private static final Pattern LOCALIZACAO_TOPIC = Pattern.compile("^/topic/localizacao/motorista/(\\d+)$");
 
     @Autowired private JwtUtil jwtUtil;
     @Autowired private AlunoService alunoService;
@@ -49,9 +51,15 @@ public class StompAuthInterceptor implements ChannelInterceptor {
         if (accessor == null) return message;
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            accessor.setUser(authenticate(accessor));
+            StompPrincipal principal = authenticate(accessor);
+            accessor.setUser(principal);
+            log.info("[ws] CONNECT autenticado: userId={} role={}", principal.getUserId(), principal.getRole());
         } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            log.info("[ws] SUBSCRIBE pedido: destino={} user={}", accessor.getDestination(), accessor.getUser());
             authorizeSubscription(accessor);
+            log.info("[ws] SUBSCRIBE autorizado: destino={}", accessor.getDestination());
+        } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+            log.info("[ws] SEND: destino={} user={}", accessor.getDestination(), accessor.getUser());
         }
 
         return message;
@@ -60,11 +68,13 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     private StompPrincipal authenticate(StompHeaderAccessor accessor) {
         String authHeader = firstHeader(accessor, "Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("[ws] CONNECT recusado: header Authorization ausente");
             throw new MessagingException("Token ausente. Conexão recusada.");
         }
 
         String token = authHeader.substring(7);
         if (!jwtUtil.isValidAccessToken(token)) {
+            log.warn("[ws] CONNECT recusado: token inválido/expirado");
             throw new MessagingException("Token inválido ou expirado. Conexão recusada.");
         }
 
@@ -91,12 +101,6 @@ public class StompAuthInterceptor implements ChannelInterceptor {
             return;
         }
 
-        Matcher localizacaoMatch = LOCALIZACAO_TOPIC.matcher(destination);
-        if (localizacaoMatch.matches()) {
-            authorizeLocalizacaoTopic(principal, Long.valueOf(localizacaoMatch.group(1)));
-            return;
-        }
-
         // Nenhum outro tópico é reconhecido — nega por padrão em vez de
         // permitir qualquer destino não mapeado.
         throw new MessagingException("Inscrição não permitida para este destino.");
@@ -118,29 +122,6 @@ public class StompAuthInterceptor implements ChannelInterceptor {
         if (!ehOMotoristaDoAluno && !ehOResponsavelDoAluno) {
             throw new MessagingException("Você não tem permissão para acessar esta conversa.");
         }
-    }
-
-    private void authorizeLocalizacaoTopic(StompPrincipal principal, Long motoristaId) {
-        if ("ADMIN".equals(principal.getRole())) return;
-
-        if ("MOTORISTA".equals(principal.getRole())) {
-            if (!motoristaId.equals(principal.getUserId())) {
-                throw new MessagingException("Você só pode assinar sua própria localização.");
-            }
-            return;
-        }
-
-        if ("RESPONSAVEL".equals(principal.getRole())) {
-            List<Aluno> meusAlunos = alunoService.findByResponsavelId(principal.getUserId());
-            boolean temFilhoComEsseMotorista = meusAlunos.stream()
-                    .anyMatch(aluno -> motoristaId.equals(aluno.getMotoristaId()));
-            if (!temFilhoComEsseMotorista) {
-                throw new MessagingException("Você não tem permissão para acompanhar esta van.");
-            }
-            return;
-        }
-
-        throw new MessagingException("Você não tem permissão para acompanhar esta van.");
     }
 
     private String firstHeader(StompHeaderAccessor accessor, String name) {
