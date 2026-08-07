@@ -127,6 +127,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    /**
+     * Falha ao enviar e-mail (SMTP indisponível, credenciais inválidas etc.)
+     * — EmailService já produz uma mensagem segura pro usuário final aqui,
+     * então repassamos ela em vez de cair no fallback genérico de 500.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+            ApiResponse.error(500, ex.getMessage())
+        );
+    }
+
     // -------------------------------------------------------------------------
     // Violações de constraint do banco — detalhe técnico fica só no log
     // -------------------------------------------------------------------------

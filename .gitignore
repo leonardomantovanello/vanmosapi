@@ -27,7 +27,8 @@ hs_err_pid*
 *.iws
 *.iml
 *.ipr
-.vscode/
+.vscode/*
+!.vscode/launch.json
 
 # Maven
 target/

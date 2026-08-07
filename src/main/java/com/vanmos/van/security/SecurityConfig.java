@@ -125,7 +125,7 @@ public class SecurityConfig {
                     // ficava acidentalmente público também até essa correção, pois essa
                     // regra é avaliada antes da regra ROLE_ADMIN mais específica abaixo.
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login", "/api/login-admin",
-                            "/api/passageiros", "/api/auth/refresh", "/api/motoristas-admin/login")
+                            "/api/passageiros", "/api/auth/refresh", "/api/motoristas-admin/login", "/api/contato")
                     .permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET,
                             "/api/passageiros/verificar-email", "/api/motoristas-admin/publico")

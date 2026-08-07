@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "VanmosApplication",
+            "request": "launch",
+            "mainClass": "com.vanmos.van.VanmosApplication",
+            "projectName": "van",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
