@@ -16,6 +16,16 @@ JWT_REFRESH_EXPIRATION_MS=604800000
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8686
 CORS_ALLOWED_HEADERS=Authorization,Content-Type,Accept,Origin,X-Requested-With,X-Refresh-Request
 
+# URL publica do site — usada pra montar o link de redefinicao de senha no e-mail
+FRONTEND_URL=http://localhost:5173
+
+# Conta usada pra enviar e-mails (senha gerada, contato, redefinicao de senha).
+# Gmail: precisa de uma "senha de app" (myaccount.google.com/apppasswords), nao a senha normal
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=
+MAIL_PASSWORD=
+
 TRUSTED_PROXIES=127.0.0.1,0:0:0:0:0:0:0:1,::1
 
 DB_POOL_MAX=5

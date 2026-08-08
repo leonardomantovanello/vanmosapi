@@ -1,20 +1,34 @@
 package com.vanmos.van.model.service;
 
+import com.vanmos.van.exception.ValidationException;
 import com.vanmos.van.model.entity.Passageiro;
+import com.vanmos.van.model.entity.PasswordResetToken;
 import com.vanmos.van.model.repository.PassageiroRepository;
+import com.vanmos.van.model.repository.PasswordResetTokenRepository;
+import com.vanmos.van.security.PasswordResetTokenGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class PassageiroService {
 
+    // Validade do link de redefinição de senha enviado por e-mail.
+    private static final long TOKEN_REDEFINICAO_VALIDADE_MINUTOS = 30;
+
     @Autowired
     private PassageiroRepository passageiroRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private PasswordResetTokenGenerator passwordResetTokenGenerator;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -40,6 +54,10 @@ public class PassageiroService {
 
     public boolean emailJaCadastrado(String email) {
         return passageiroRepository.findByEmailIgnoreCase(email.trim()).isPresent();
+    }
+
+    public Optional<Passageiro> buscarPorEmail(String email) {
+        return passageiroRepository.findByEmailIgnoreCase(email.trim());
     }
 
     @Transactional
@@ -132,6 +150,56 @@ public class PassageiroService {
 
         existente.setSenha(passwordEncoder.encode(novaSenha));
         passageiroRepository.save(existente);
+    }
+
+    // Redefinição via "esqueci minha senha" — diferente de alterarSenha()
+    // acima, não exige a senha atual: a prova de identidade aqui é o token
+    // de uso único que só chega em quem tem acesso à caixa de e-mail
+    // cadastrada (ver gerarTokenRedefinicaoSenha/redefinirSenhaComToken).
+    @Transactional
+    public void redefinirSenha(Long id, String novaSenha) {
+        Passageiro existente = passageiroRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Passageiro não encontrado: " + id));
+        existente.setSenha(passwordEncoder.encode(novaSenha));
+        passageiroRepository.save(existente);
+    }
+
+    // Gera o token de uso único do link enviado por e-mail — cada pedido
+    // cria uma linha nova (não invalida pedidos anteriores; se o usuário
+    // clicar um link antigo antes de um novo, ele ainda funciona até expirar
+    // ou ser usado, o que for primeiro).
+    @Transactional
+    public String gerarTokenRedefinicaoSenha(Long passageiroId) {
+        String token = passwordResetTokenGenerator.gerar();
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setPassageiroId(passageiroId);
+        resetToken.setExpiraEm(LocalDateTime.now().plusMinutes(TOKEN_REDEFINICAO_VALIDADE_MINUTOS));
+        resetToken.setUsado(false);
+        passwordResetTokenRepository.save(resetToken);
+
+        return token;
+    }
+
+    // Valida o token (existe, não expirou, não foi usado) e troca a senha —
+    // marca o token como usado no mesmo passo pra não poder ser reaproveitado.
+    @Transactional
+    public void redefinirSenhaComToken(String token, String novaSenha) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new ValidationException("Link de redefinição inválido ou já usado."));
+
+        if (resetToken.isUsado()) {
+            throw new ValidationException("Link de redefinição inválido ou já usado.");
+        }
+        if (resetToken.getExpiraEm().isBefore(LocalDateTime.now())) {
+            throw new ValidationException("Link de redefinição expirado. Solicite um novo.");
+        }
+
+        redefinirSenha(resetToken.getPassageiroId(), novaSenha);
+
+        resetToken.setUsado(true);
+        passwordResetTokenRepository.save(resetToken);
     }
 
     @Transactional

@@ -20,6 +20,11 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String remetente;
 
+    // URL pública do site — usada só pra montar o link de redefinição de
+    // senha no corpo do e-mail (ver enviarLinkRedefinicaoSenha).
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     /**
      * Envia a senha gerada para um passageiro cadastrado por um motorista.
      * Falha de envio não deve impedir o cadastro em si (a conta já foi
@@ -44,6 +49,35 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Falha ao enviar e-mail de senha gerada para {}", destinatario, e);
             throw new IllegalStateException("Não foi possível enviar o e-mail com a senha. Tente novamente.");
+        }
+    }
+
+    /**
+     * Envia o link de redefinição de senha em resposta a um pedido de
+     * "esqueci minha senha". O token já vem pronto (gerado e persistido por
+     * PassageiroService#gerarTokenRedefinicaoSenha) — aqui só monta a URL e
+     * manda o e-mail.
+     */
+    public void enviarLinkRedefinicaoSenha(String destinatario, String nome, String token) {
+        String link = frontendUrl + "/redefinir-senha?token=" + token;
+
+        SimpleMailMessage mensagem = new SimpleMailMessage();
+        mensagem.setFrom(remetente);
+        mensagem.setTo(destinatario);
+        mensagem.setSubject("VanMos — redefinição de senha");
+        mensagem.setText(
+                "Olá, " + nome + "!\n\n" +
+                "Recebemos um pedido de redefinição de senha para sua conta VanMos.\n\n" +
+                "Clique no link abaixo para escolher uma nova senha (válido por 30 minutos):\n" +
+                link + "\n\n" +
+                "Se você não pediu essa redefinição, ignore este e-mail — nada foi alterado na sua conta.\n\n" +
+                "Equipe VanMos"
+        );
+        try {
+            mailSender.send(mensagem);
+        } catch (Exception e) {
+            log.error("Falha ao enviar e-mail de link de redefinição para {}", destinatario, e);
+            throw new IllegalStateException("Não foi possível enviar o e-mail de redefinição.");
         }
     }
 

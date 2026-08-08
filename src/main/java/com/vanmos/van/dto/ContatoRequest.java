@@ -6,8 +6,8 @@ import jakarta.validation.constraints.Size;
 
 /**
  * Corpo aceito por POST /api/contato — formulário público "Contate-nos" do
- * site. Sem autenticação (qualquer visitante pode enviar), protegido apenas
- * pelo RateLimitFilter global (ver SecurityConfig).
+ * site. Sem autenticação (qualquer visitante pode enviar), protegido pelo
+ * RateLimitFilter (ver RateLimitFilter#shouldNotFilter e SecurityConfig).
  */
 public record ContatoRequest(
         @NotBlank(message = "Nome é obrigatório") String nome,

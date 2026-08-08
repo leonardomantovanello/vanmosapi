@@ -3,6 +3,8 @@ package com.vanmos.van.controller;
 import com.vanmos.van.dto.AlterarSenhaRequest;
 import com.vanmos.van.dto.ApiResponse;
 import com.vanmos.van.dto.CadastrarPassageiroPeloMotoristaRequest;
+import com.vanmos.van.dto.EsqueciSenhaRequest;
+import com.vanmos.van.dto.RedefinirSenhaComTokenRequest;
 import com.vanmos.van.model.entity.Aluno;
 import com.vanmos.van.model.entity.Passageiro;
 import com.vanmos.van.model.service.AlunoService;
@@ -90,6 +92,7 @@ public class PassageiroController {
         aluno.setEnderecoDesembarque(request.enderecoDesembarque());
         aluno.setEscola(request.escola());
         aluno.setTurno(vazioParaNull(request.turno()));
+        aluno.setValor(request.valor());
         aluno.setAtivo(true);
         aluno.setResponsavelId(responsavelSalvo.getId());
         aluno.setMotoristaId(motoristaId);
@@ -195,6 +198,40 @@ public class PassageiroController {
     public ResponseEntity<ApiResponse<Void>> inativarPerfil(@PathVariable Long id) {
         passageiroService.inativarCadastro(id);
         return ResponseEntity.ok(ApiResponse.noContent("Usuário inativado com sucesso."));
+    }
+
+    /**
+     * "Esqueci minha senha", etapa 1 — gera um token de uso único e envia um
+     * link de redefinição por e-mail (ver redefinirSenha abaixo pra etapa 2).
+     * Sempre responde a mesma mensagem genérica, exista ou não o e-mail,
+     * pra não revelar pra quem tenta se um endereço está cadastrado
+     * (evita user enumeration).
+     */
+    @PostMapping("/esqueci-senha")
+    public ResponseEntity<ApiResponse<Void>> esqueciSenha(@Valid @RequestBody EsqueciSenhaRequest request) {
+        passageiroService.buscarPorEmail(request.email()).ifPresent(passageiro -> {
+            String token = passageiroService.gerarTokenRedefinicaoSenha(passageiro.getId());
+            try {
+                emailService.enviarLinkRedefinicaoSenha(passageiro.getEmail(), passageiro.getNome(), token);
+            } catch (Exception e) {
+                log.error("Falha ao enviar e-mail de link de redefinição para passageiro id={}", passageiro.getId(), e);
+            }
+        });
+
+        return ResponseEntity.ok(ApiResponse.noContent(
+            "Se esse e-mail estiver cadastrado, enviamos um link de redefinição para ele."
+        ));
+    }
+
+    /**
+     * "Esqueci minha senha", etapa 2 — troca a senha usando o token recebido
+     * por e-mail (ver PassageiroService#redefinirSenhaComToken: token
+     * inválido/expirado/já usado vira ValidationException → HTTP 422).
+     */
+    @PostMapping("/redefinir-senha")
+    public ResponseEntity<ApiResponse<Void>> redefinirSenha(@Valid @RequestBody RedefinirSenhaComTokenRequest request) {
+        passageiroService.redefinirSenhaComToken(request.token(), request.novaSenha());
+        return ResponseEntity.ok(ApiResponse.noContent("Senha redefinida com sucesso."));
     }
 
     @GetMapping("/verificar-email")

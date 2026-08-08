@@ -94,7 +94,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Aplica o rate limit APENAS nas rotas de login.
+     * Aplica o rate limit nas rotas de login e em outros endpoints públicos
+     * que disparam ação sensível (ex.: esqueci-senha e contato enviam
+     * e-mail — sem limite, dá pra floodar a caixa de entrada de qualquer
+     * cadastrado, ou a da própria VanMos no caso do formulário de contato).
      * Todas as outras rotas passam direto sem consumir tokens.
      */
     @Override
@@ -102,7 +105,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         return !path.equals("/api/login")
                 && !path.equals("/api/login-admin")
-                && !path.equals("/api/motoristas-admin/login");
+                && !path.equals("/api/motoristas-admin/login")
+                && !path.equals("/api/passageiros/esqueci-senha")
+                && !path.equals("/api/passageiros/redefinir-senha")
+                && !path.equals("/api/contato");
     }
 
     private String resolveClientIp(HttpServletRequest request) {

@@ -3,6 +3,8 @@ package com.vanmos.van.model.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "alunos")
 public class Aluno {
@@ -43,6 +45,13 @@ public class Aluno {
     @Column(name = "ativo")
     private boolean ativo;
 
+    // Mensalidade cobrada pelo motorista por esse aluno — soma dos alunos
+    // ativos vira a "Receita Mensal" do dashboard (ver Motorista.jsx).
+    // NULL = não informado (opcional no cadastro).
+    @DecimalMin(value = "0.0", inclusive = true, message = "Valor mensal não pode ser negativo")
+    @Column(name = "valor", precision = 10, scale = 2)
+    private BigDecimal valor;
+
     // FK para passageiros.id — Passageiro é quem de fato autentica como RESPONSAVEL
     // (ver LoginController); a tabela "responsaveis" é um cadastro de perfil
     // separado que nenhum fluxo de login usa hoje.
@@ -78,6 +87,9 @@ public class Aluno {
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public BigDecimal getValor() { return valor; }
+    public void setValor(BigDecimal valor) { this.valor = valor; }
 
     public Long getResponsavelId() { return responsavelId; }
     public void setResponsavelId(Long responsavelId) { this.responsavelId = responsavelId; }

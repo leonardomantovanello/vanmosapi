@@ -80,6 +80,7 @@ public class AlunoService {
             existente.setEnderecoDesembarque(aluno.getEnderecoDesembarque());
             existente.setEscola(aluno.getEscola());
             existente.setTurno(aluno.getTurno());
+            existente.setValor(aluno.getValor());
             if (aluno.getResponsavelId() != null) {
                 existente.setResponsavelId(aluno.getResponsavelId());
             }

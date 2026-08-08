@@ -1,7 +1,10 @@
 package com.vanmos.van.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+
+import java.math.BigDecimal;
 
 /**
  * Corpo aceito por POST /api/passageiros/cadastrar-motorista.
@@ -29,6 +32,11 @@ public record CadastrarPassageiroPeloMotoristaRequest(
         String enderecoEmbarque,
         String enderecoDesembarque,
         String escola,
-        String turno
+        String turno,
+
+        // Mensalidade cobrada pelo aluno — opcional (pode ser preenchida
+        // depois via edição), soma dos ativos vira a Receita Mensal do dashboard.
+        @DecimalMin(value = "0.0", inclusive = true, message = "Valor mensal não pode ser negativo")
+        BigDecimal valor
 ) {
 }
