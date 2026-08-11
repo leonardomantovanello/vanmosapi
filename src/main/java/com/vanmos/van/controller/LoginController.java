@@ -1,6 +1,7 @@
 package com.vanmos.van.controller;
 
 import com.vanmos.van.model.entity.Passageiro;
+import com.vanmos.van.model.entity.StatusCadastro;
 import com.vanmos.van.model.service.PassageiroService;
 import com.vanmos.van.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,9 +65,21 @@ public class LoginController {
         }
 
         if (!usuario.getAtivo()) {
+            // Mensagem ciente do status do fluxo de aprovação de motorista
+            // (ver CadastroAprovacaoController) — PASSAGEIRO e contas
+            // desativadas manualmente (statusCadastro null) caem no genérico.
+            String mensagemInativo = "Conta inativa. Entre em contato com o administrador.";
+            if (usuario.getStatusCadastro() == StatusCadastro.PENDENTE) {
+                mensagemInativo = "Seu cadastro está em análise. Você receberá um e-mail assim que for aprovado.";
+            } else if (usuario.getStatusCadastro() == StatusCadastro.REPROVADO) {
+                mensagemInativo = "Seu cadastro não foi aprovado"
+                        + (usuario.getMotivoReprovacao() == null || usuario.getMotivoReprovacao().isBlank()
+                                ? "." : ": " + usuario.getMotivoReprovacao() + ".")
+                        + " Entre em contato com o suporte para mais informações.";
+            }
             return ResponseEntity.status(403).body(Map.of(
                     "sucesso", false,
-                    "mensagem", "Conta inativa. Entre em contato com o administrador."
+                    "mensagem", mensagemInativo
             ));
         }
 

@@ -1,6 +1,7 @@
 package com.vanmos.van.model.service;
 
 import com.vanmos.van.dto.ContatoRequest;
+import com.vanmos.van.model.entity.Passageiro;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class EmailService {
@@ -106,6 +109,86 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Falha ao enviar e-mail de contato de {}", request.email(), e);
             throw new IllegalStateException("Não foi possível enviar sua mensagem agora. Tente novamente em instantes.");
+        }
+    }
+
+    private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    /**
+     * Avisa o suporte (mesma caixa que envia os e-mails — ver enviarContato)
+     * que um motorista se cadastrou e está aguardando aprovação. O link leva
+     * a uma página pública de revisão com os documentos e os botões reais de
+     * Aprovar/Reprovar — o e-mail em si nunca executa a ação diretamente,
+     * pra não ser disparado por acidente por scanners de link (Outlook Safe
+     * Links e afins, que abrem automaticamente todo link recebido).
+     */
+    public void enviarSolicitacaoAprovacaoCadastro(Passageiro motorista, String token) {
+        String link = frontendUrl + "/motorista/analise-cadastro?token=" + token;
+
+        SimpleMailMessage mensagem = new SimpleMailMessage();
+        mensagem.setFrom(remetente);
+        mensagem.setTo(remetente);
+        mensagem.setSubject("VanMos — novo cadastro de motorista para aprovação");
+        mensagem.setText(
+                "Um novo motorista se cadastrou e está aguardando aprovação.\n\n" +
+                "Nome: " + motorista.getNome() + "\n" +
+                "CPF: " + (isBlank(motorista.getCpf()) ? "Não informado" : motorista.getCpf()) + "\n" +
+                "RG: " + (isBlank(motorista.getRg()) ? "Não informado" : motorista.getRg()) + "\n" +
+                "CNH: " + (isBlank(motorista.getCnh()) ? "Não informado" : motorista.getCnh()) + "\n" +
+                "Telefone: " + (isBlank(motorista.getTelefone()) ? "Não informado" : motorista.getTelefone()) + "\n" +
+                "E-mail: " + motorista.getEmail() + "\n" +
+                "Data do cadastro: " + motorista.getCriadoEm().format(FORMATO_DATA) + "\n\n" +
+                "Para ver os documentos enviados e aprovar ou reprovar este cadastro, acesse:\n" +
+                link + "\n\n" +
+                "Este link é de uso único e expira em 7 dias.\n\n" +
+                "Equipe VanMos"
+        );
+        try {
+            mailSender.send(mensagem);
+        } catch (Exception e) {
+            log.error("Falha ao enviar e-mail de solicitação de aprovação para passageiro id={}", motorista.getId(), e);
+            throw new IllegalStateException("Não foi possível notificar o suporte para análise.");
+        }
+    }
+
+    /** Avisa o motorista que seu cadastro foi aprovado e ele já pode logar. */
+    public void enviarConfirmacaoAprovacao(String destinatario, String nome) {
+        SimpleMailMessage mensagem = new SimpleMailMessage();
+        mensagem.setFrom(remetente);
+        mensagem.setTo(destinatario);
+        mensagem.setSubject("VanMos — cadastro aprovado!");
+        mensagem.setText(
+                "Olá, " + nome + "!\n\n" +
+                "Seu cadastro como motorista na VanMos foi aprovado. Você já pode fazer login normalmente:\n\n" +
+                frontendUrl + "/login\n\n" +
+                "Equipe VanMos"
+        );
+        try {
+            mailSender.send(mensagem);
+        } catch (Exception e) {
+            log.error("Falha ao enviar e-mail de confirmação de aprovação para {}", destinatario, e);
+            throw new IllegalStateException("Não foi possível enviar o e-mail de confirmação.");
+        }
+    }
+
+    /** Avisa o motorista que seu cadastro foi reprovado, com o motivo se houver. */
+    public void enviarNotificacaoReprovacao(String destinatario, String nome, String motivo) {
+        SimpleMailMessage mensagem = new SimpleMailMessage();
+        mensagem.setFrom(remetente);
+        mensagem.setTo(destinatario);
+        mensagem.setSubject("VanMos — atualização sobre seu cadastro");
+        mensagem.setText(
+                "Olá, " + nome + "!\n\n" +
+                "Analisamos seu cadastro como motorista na VanMos e, no momento, não foi possível aprová-lo.\n\n" +
+                (isBlank(motivo) ? "" : "Motivo informado: " + motivo + "\n\n") +
+                "Se tiver dúvidas, entre em contato com o nosso suporte.\n\n" +
+                "Equipe VanMos"
+        );
+        try {
+            mailSender.send(mensagem);
+        } catch (Exception e) {
+            log.error("Falha ao enviar e-mail de reprovação para {}", destinatario, e);
+            throw new IllegalStateException("Não foi possível enviar o e-mail de notificação.");
         }
     }
 

@@ -7,6 +7,7 @@ import com.vanmos.van.dto.EsqueciSenhaRequest;
 import com.vanmos.van.dto.RedefinirSenhaComTokenRequest;
 import com.vanmos.van.model.entity.Aluno;
 import com.vanmos.van.model.entity.Passageiro;
+import com.vanmos.van.model.entity.StatusCadastro;
 import com.vanmos.van.model.service.AlunoService;
 import com.vanmos.van.model.service.EmailService;
 import com.vanmos.van.model.service.PassageiroService;
@@ -39,13 +40,46 @@ public class PassageiroController {
     @PostMapping
     public ResponseEntity<ApiResponse<?>> cadastrar(@Valid @RequestBody Passageiro passageiro) {
         passageiro.setAtivo(false);
+        boolean isMotorista = "MOTORISTA".equals(passageiro.getTipo());
+        if (isMotorista) {
+            passageiro.setStatusCadastro(StatusCadastro.PENDENTE);
+        }
+
         Passageiro resultado = passageiroService.save(passageiro);
+
+        // Motorista precisa passar pelo fluxo de aprovação por e-mail antes
+        // de poder logar (ver CadastroAprovacaoController) — dispara a
+        // notificação pro suporte aqui. Falha de e-mail não pode derrubar o
+        // cadastro já persistido (mesmo padrão non-fatal de
+        // cadastrarPeloMotorista, ver emailEnviado abaixo).
+        //
+        // IMPORTANTE: resultado.setSenha(null) só acontece depois de TODAS as
+        // chamadas @Transactional abaixo — zerar a senha antes deixaria a
+        // entidade gerenciada "suja" (dirty), e o flush do Hibernate ao
+        // COMMITAR a próxima transação (gerarTokenAprovacaoCadastro) validaria
+        // esse estado intermediário e falharia em @NotBlank da senha.
+        String mensagem = "Cadastro realizado. Aguarde ativação.";
+        if (isMotorista) {
+            boolean emailEnviado = true;
+            try {
+                String token = passageiroService.gerarTokenAprovacaoCadastro(resultado.getId());
+                emailService.enviarSolicitacaoAprovacaoCadastro(resultado, token);
+            } catch (Exception e) {
+                log.error("Falha ao enviar e-mail de solicitação de aprovação para passageiro id={}", resultado.getId(), e);
+                emailEnviado = false;
+            }
+            mensagem = emailEnviado
+                    ? "Cadastro realizado! Seus dados foram enviados para análise. Você receberá um e-mail assim que for aprovado."
+                    : "Cadastro realizado, mas houve uma falha ao notificar o suporte para análise. Entre em contato para agilizar a aprovação.";
+        }
         resultado.setSenha(null);
+
         return ResponseEntity.status(201).body(
-            ApiResponse.created("Cadastro realizado. Aguarde ativação.", resultado)
+            ApiResponse.created(mensagem, resultado)
         );
-        // IllegalArgumentException (CPF/email duplicado, CPF inválido) e demais
-        // são capturadas pelo GlobalExceptionHandler → HTTP 400
+        // IllegalArgumentException (CPF/email duplicado, CPF inválido, campos
+        // obrigatórios de motorista faltando) e demais são capturadas pelo
+        // GlobalExceptionHandler → HTTP 400
     }
 
     /**

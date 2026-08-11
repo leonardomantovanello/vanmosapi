@@ -126,10 +126,12 @@ public class SecurityConfig {
                     // regra é avaliada antes da regra ROLE_ADMIN mais específica abaixo.
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login", "/api/login-admin",
                             "/api/passageiros", "/api/auth/refresh", "/api/motoristas-admin/login", "/api/contato",
-                            "/api/passageiros/esqueci-senha", "/api/passageiros/redefinir-senha")
+                            "/api/passageiros/esqueci-senha", "/api/passageiros/redefinir-senha",
+                            "/api/passageiros/aprovacao/*/aprovar", "/api/passageiros/aprovacao/*/reprovar")
                     .permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET,
-                            "/api/passageiros/verificar-email", "/api/motoristas-admin/publico")
+                            "/api/passageiros/verificar-email", "/api/motoristas-admin/publico",
+                            "/api/passageiros/aprovacao/*")
                     .permitAll()
 
                     // Handshake do WebSocket/STOMP (chat e localização em tempo real) —

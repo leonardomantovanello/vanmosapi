@@ -3,6 +3,8 @@ package com.vanmos.van.model.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
+import java.time.LocalDateTime;
+
 /**
  * Bean Validation aplicada diretamente na entidade (ponto 3 do relatório).
  *
@@ -88,6 +90,42 @@ public class Passageiro {
     @Column(name = "avatar_base64", columnDefinition = "NVARCHAR(MAX)")
     private String avatarBase64;
 
+    // --- Campos do fluxo de aprovação de motorista (V12) ---
+    // Só preenchidos/operacionais para tipo=MOTORISTA; PASSAGEIRO nunca usa
+    // estes campos (ver validação condicional em PassageiroService#save).
+
+    @Column(name = "telefone", length = 20)
+    private String telefone;
+
+    @Column(name = "rg", length = 20)
+    private String rg;
+
+    @Column(name = "cnh", length = 20)
+    private String cnh;
+
+    // Documentos como data URI base64, mesmo padrão de avatarBase64 — sem
+    // storage de arquivos configurado no projeto.
+    @Column(name = "rg_documento_base64", columnDefinition = "NVARCHAR(MAX)")
+    private String rgDocumentoBase64;
+
+    @Column(name = "cnh_documento_base64", columnDefinition = "NVARCHAR(MAX)")
+    private String cnhDocumentoBase64;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_cadastro", length = 20)
+    private StatusCadastro statusCadastro;
+
+    @Column(name = "motivo_reprovacao", columnDefinition = "NVARCHAR(MAX)")
+    private String motivoReprovacao;
+
+    @Column(name = "criado_em", nullable = false)
+    private LocalDateTime criadoEm;
+
+    @PrePersist
+    private void aoPersistir() {
+        if (criadoEm == null) criadoEm = LocalDateTime.now();
+    }
+
     public boolean getAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
 
@@ -120,4 +158,28 @@ public class Passageiro {
 
     public String getAvatarBase64() { return avatarBase64; }
     public void setAvatarBase64(String avatarBase64) { this.avatarBase64 = avatarBase64; }
+
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
+
+    public String getRg() { return rg; }
+    public void setRg(String rg) { this.rg = rg; }
+
+    public String getCnh() { return cnh; }
+    public void setCnh(String cnh) { this.cnh = cnh; }
+
+    public String getRgDocumentoBase64() { return rgDocumentoBase64; }
+    public void setRgDocumentoBase64(String rgDocumentoBase64) { this.rgDocumentoBase64 = rgDocumentoBase64; }
+
+    public String getCnhDocumentoBase64() { return cnhDocumentoBase64; }
+    public void setCnhDocumentoBase64(String cnhDocumentoBase64) { this.cnhDocumentoBase64 = cnhDocumentoBase64; }
+
+    public StatusCadastro getStatusCadastro() { return statusCadastro; }
+    public void setStatusCadastro(StatusCadastro statusCadastro) { this.statusCadastro = statusCadastro; }
+
+    public String getMotivoReprovacao() { return motivoReprovacao; }
+    public void setMotivoReprovacao(String motivoReprovacao) { this.motivoReprovacao = motivoReprovacao; }
+
+    public LocalDateTime getCriadoEm() { return criadoEm; }
+    public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }
 }
