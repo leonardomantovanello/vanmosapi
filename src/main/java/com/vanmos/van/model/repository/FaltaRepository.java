@@ -13,4 +13,5 @@ public interface FaltaRepository extends JpaRepository<Falta, Long> {
     List<Falta> findByAlunoIdOrderByDataAsc(Long alunoId);
     Optional<Falta> findByAlunoIdAndData(Long alunoId, LocalDate data);
     void deleteByAlunoIdAndData(Long alunoId, LocalDate data);
+    List<Falta> findByAlunoIdInAndData(List<Long> alunoIds, LocalDate data);
 }

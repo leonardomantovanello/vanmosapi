@@ -19,15 +19,22 @@ public class FaltaService {
         return faltaRepository.findByAlunoIdOrderByDataAsc(alunoId);
     }
 
+    // Usado pelo motorista pra saber quem da rota está ausente hoje (etiqueta
+    // "Faltou hoje" + notificação local — ver FaltaController#hoje).
+    public List<Falta> listarPorAlunosEData(List<Long> alunoIds, LocalDate data) {
+        if (alunoIds.isEmpty()) return List.of();
+        return faltaRepository.findByAlunoIdInAndData(alunoIds, data);
+    }
+
     // Upsert: se já existe falta nesse dia, só atualiza a justificativa (não
     // deixa duplicar registro pro mesmo aluno+dia — UQ_faltas_aluno_data).
     @Transactional
-    public Falta marcar(Long alunoId, LocalDate data, String justificativa, Long registradoPorMotoristaId) {
+    public Falta marcar(Long alunoId, LocalDate data, String justificativa, Long registradoPorId) {
         Falta falta = faltaRepository.findByAlunoIdAndData(alunoId, data).orElseGet(Falta::new);
         falta.setAlunoId(alunoId);
         falta.setData(data);
         falta.setJustificativa(justificativa);
-        falta.setRegistradoPorMotoristaId(registradoPorMotoristaId);
+        falta.setRegistradoPorId(registradoPorId);
         return faltaRepository.save(falta);
     }
 

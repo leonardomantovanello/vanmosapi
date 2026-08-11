@@ -7,9 +7,12 @@ import java.time.LocalDateTime;
 
 /**
  * Falta de um aluno num dia específico — sistema de controle de presença.
- * Um dia SEM registro aqui é considerado normal/presente; só o motorista
- * (nunca o responsável) cria/edita/remove esses registros, sempre com uma
- * justificativa (ver FaltaController). O responsável só visualiza.
+ * Um dia SEM registro aqui é considerado normal/presente; só o responsável
+ * (nunca o motorista) cria/edita/remove esses registros — quem avisa que o
+ * aluno não vai é quem sabe disso primeiro (ver FaltaController). Marcar
+ * uma falta para hoje remove a parada da corrida do motorista (ver
+ * RotaProgressoService). O motorista só visualiza (ex.: etiqueta "Faltou
+ * hoje" na lista de passageiros).
  */
 @Entity
 @Table(
@@ -31,9 +34,9 @@ public class Falta {
     @Column(name = "justificativa", length = 500)
     private String justificativa;
 
-    // Id do Passageiro (tipo=MOTORISTA) que registrou a falta
-    @Column(name = "registrado_por_motorista_id", nullable = false)
-    private Long registradoPorMotoristaId;
+    // Id do Passageiro (tipo=RESPONSAVEL, ou ADMIN em casos excepcionais) que registrou a falta
+    @Column(name = "registrado_por_id", nullable = false)
+    private Long registradoPorId;
 
     @Column(name = "criado_em", nullable = false)
     private LocalDateTime criadoEm;
@@ -57,8 +60,8 @@ public class Falta {
     public String getJustificativa() { return justificativa; }
     public void setJustificativa(String justificativa) { this.justificativa = justificativa; }
 
-    public Long getRegistradoPorMotoristaId() { return registradoPorMotoristaId; }
-    public void setRegistradoPorMotoristaId(Long registradoPorMotoristaId) { this.registradoPorMotoristaId = registradoPorMotoristaId; }
+    public Long getRegistradoPorId() { return registradoPorId; }
+    public void setRegistradoPorId(Long registradoPorId) { this.registradoPorId = registradoPorId; }
 
     public LocalDateTime getCriadoEm() { return criadoEm; }
     public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }

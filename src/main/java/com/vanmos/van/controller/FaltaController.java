@@ -4,6 +4,7 @@ import com.vanmos.van.dto.ApiResponse;
 import com.vanmos.van.dto.MarcarFaltaRequest;
 import com.vanmos.van.exception.ForbiddenException;
 import com.vanmos.van.exception.ResourceNotFoundException;
+import com.vanmos.van.exception.ValidationException;
 import com.vanmos.van.model.entity.Aluno;
 import com.vanmos.van.model.entity.Falta;
 import com.vanmos.van.model.service.AlunoService;
@@ -19,10 +20,13 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controle de faltas por aluno — só o motorista (ou ADMIN) registra/edita/
- * remove; o responsável só visualiza (ver validarAcessoEscrita). Um dia sem
- * registro aqui é considerado normal — não existe um estado "presente"
- * salvo explicitamente, só a ausência de falta.
+ * Controle de faltas por aluno — só o responsável (ou ADMIN) registra/edita/
+ * remove; o motorista só visualiza (ver buscarAlunoComAcessoEscrita e o
+ * endpoint /hoje, usado pra etiqueta "Faltou hoje" e notificação local no
+ * app do motorista). Um dia sem registro aqui é considerado normal — não
+ * existe um estado "presente" salvo explicitamente, só a ausência de falta.
+ * Marcar falta pra hoje remove a parada da corrida do motorista (ver
+ * RotaProgressoService), evitando uma viagem desnecessária.
  */
 @RestController
 @RequestMapping("/api/faltas")
@@ -32,6 +36,19 @@ public class FaltaController {
     @Autowired private AlunoService    alunoService;
     @Autowired private JwtUtil         jwtUtil;
     @Autowired private OwnershipValidator ownership;
+
+    // Faltas de hoje entre os alunos do motorista logado — usado pra
+    // etiqueta "Faltou hoje" na lista de passageiros e pra detectar novas
+    // ausências e disparar notificação local (ver driver-home.tsx no app).
+    @GetMapping("/hoje")
+    public ResponseEntity<ApiResponse<List<Falta>>> hoje() {
+        if (!"MOTORISTA".equals(ownership.getCurrentRole())) {
+            throw new ForbiddenException("Apenas o motorista pode consultar as faltas de hoje da sua rota.");
+        }
+        Long motoristaId = ownership.getCurrentUserId(jwtUtil);
+        List<Long> ids = alunoService.findByMotoristaId(motoristaId).stream().map(Aluno::getId).toList();
+        return ResponseEntity.ok(ApiResponse.ok("Faltas de hoje.", faltaService.listarPorAlunosEData(ids, LocalDate.now())));
+    }
 
     @GetMapping("/aluno/{alunoId}")
     public ResponseEntity<ApiResponse<List<Falta>>> listar(@PathVariable Long alunoId) {
@@ -44,8 +61,17 @@ public class FaltaController {
             @PathVariable Long alunoId, @Valid @RequestBody MarcarFaltaRequest request) {
 
         Aluno aluno = buscarAlunoComAcessoEscrita(alunoId);
-        Long motoristaId = ownership.getCurrentUserId(jwtUtil);
-        Falta falta = faltaService.marcar(aluno.getId(), request.data(), request.justificativa(), motoristaId);
+
+        // Só faz sentido avisar ausência de hoje em diante — um dia que já
+        // passou não pode mais ser removido da corrida. ADMIN tem bypass
+        // pra correções excepcionais (mesmo padrão de outras validações
+        // condicionais no projeto).
+        if (!ownership.isAdmin() && request.data().isBefore(LocalDate.now())) {
+            throw new ValidationException("Não é possível marcar falta para um dia que já passou.");
+        }
+
+        Long responsavelId = ownership.getCurrentUserId(jwtUtil);
+        Falta falta = faltaService.marcar(aluno.getId(), request.data(), request.justificativa(), responsavelId);
         return ResponseEntity.status(201).body(ApiResponse.created("Falta registrada.", falta));
     }
 
@@ -79,8 +105,8 @@ public class FaltaController {
         return aluno;
     }
 
-    // Só o motorista do aluno (ou ADMIN) pode registrar/remover faltas —
-    // responsável tem acesso só de leitura, nunca de escrita.
+    // Só o responsável do aluno (ou ADMIN) pode registrar/remover faltas —
+    // motorista tem acesso só de leitura, nunca de escrita.
     private Aluno buscarAlunoComAcessoEscrita(Long alunoId) {
         Aluno aluno = alunoService.findById(alunoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno", alunoId));
@@ -88,11 +114,11 @@ public class FaltaController {
         if (ownership.isAdmin()) return aluno;
 
         Long currentUserId = ownership.getCurrentUserId(jwtUtil);
-        boolean ehOMotoristaDoAluno = "MOTORISTA".equals(ownership.getCurrentRole())
-                && aluno.getMotoristaId() != null && aluno.getMotoristaId().equals(currentUserId);
+        boolean ehOResponsavelDoAluno = "RESPONSAVEL".equals(ownership.getCurrentRole())
+                && aluno.getResponsavelId() != null && aluno.getResponsavelId().equals(currentUserId);
 
-        if (!ehOMotoristaDoAluno) {
-            throw new ForbiddenException("Apenas o motorista deste aluno pode registrar faltas.");
+        if (!ehOResponsavelDoAluno) {
+            throw new ForbiddenException("Apenas o responsável deste aluno pode registrar faltas.");
         }
         return aluno;
     }
