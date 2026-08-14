@@ -1,11 +1,8 @@
 package com.vanmos.van.model.service;
 
 import com.vanmos.van.exception.ValidationException;
-import com.vanmos.van.model.entity.CadastroAprovacaoToken;
 import com.vanmos.van.model.entity.Passageiro;
 import com.vanmos.van.model.entity.PasswordResetToken;
-import com.vanmos.van.model.entity.StatusCadastro;
-import com.vanmos.van.model.repository.CadastroAprovacaoTokenRepository;
 import com.vanmos.van.model.repository.PassageiroRepository;
 import com.vanmos.van.model.repository.PasswordResetTokenRepository;
 import com.vanmos.van.security.PasswordResetTokenGenerator;
@@ -15,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,11 +21,6 @@ public class PassageiroService {
     // Validade do link de redefinição de senha enviado por e-mail.
     private static final long TOKEN_REDEFINICAO_VALIDADE_MINUTOS = 30;
 
-    // Validade do link de aprovação/reprovação de cadastro de motorista —
-    // bem maior que a de redefinição de senha, porque revisão de documento
-    // por um humano leva mais tempo do que trocar uma senha.
-    private static final long TOKEN_APROVACAO_VALIDADE_DIAS = 7;
-
     @Autowired
     private PassageiroRepository passageiroRepository;
 
@@ -38,9 +29,6 @@ public class PassageiroService {
 
     @Autowired
     private PasswordResetTokenGenerator passwordResetTokenGenerator;
-
-    @Autowired
-    private CadastroAprovacaoTokenRepository cadastroAprovacaoTokenRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -72,34 +60,20 @@ public class PassageiroService {
         return passageiroRepository.findByEmailIgnoreCase(email.trim());
     }
 
+    // Sempre cria um cadastro NOVO — nunca usado pra atualizar (isso é
+    // update()). setId(null) é a defesa contra mass assignment: sem isso,
+    // um "id" enviado no corpo do POST público faria o Spring Data JPA
+    // tratar isNew(entity)==false e chamar merge() em vez de persist(),
+    // sobrescrevendo silenciosamente o cadastro de outra pessoa por esse id
+    // (CWE-915 — nenhum campo da entidade tem @JsonIgnore/WRITE_ONLY).
     @Transactional
     public Passageiro save(Passageiro passageiro) {
+        passageiro.setId(null);
         validarCpf(passageiro);
         verificarCpfDuplicado(passageiro);
         verificarEmailDuplicado(passageiro);
-        validarCamposMotorista(passageiro);
         passageiro.setSenha(passwordEncoder.encode(passageiro.getSenha()));
         return passageiroRepository.save(passageiro);
-    }
-
-    // Documentos/dados exigidos pelo fluxo de aprovação por e-mail (ver
-    // CadastroAprovacaoController) só fazem sentido pra MOTORISTA — um
-    // PASSAGEIRO (inclusive o criado por cadastrarPeloMotorista, que nunca
-    // preenche estes campos) não passa por revisão de suporte.
-    private void validarCamposMotorista(Passageiro passageiro) {
-        if (!"MOTORISTA".equals(passageiro.getTipo())) return;
-
-        List<String> faltando = new ArrayList<>();
-        if (isBlank(passageiro.getTelefone())) faltando.add("telefone");
-        if (isBlank(passageiro.getRg())) faltando.add("RG");
-        if (isBlank(passageiro.getCnh())) faltando.add("CNH");
-        if (isBlank(passageiro.getRgDocumentoBase64())) faltando.add("documento do RG");
-        if (isBlank(passageiro.getCnhDocumentoBase64())) faltando.add("documento da CNH");
-
-        if (!faltando.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Campos obrigatórios para cadastro de motorista: " + String.join(", ", faltando));
-        }
     }
 
     private boolean isBlank(String valor) {
@@ -237,77 +211,6 @@ public class PassageiroService {
 
         resetToken.setUsado(true);
         passwordResetTokenRepository.save(resetToken);
-    }
-
-    // Gera o token de uso único do link de aprovação/reprovação enviado ao
-    // suporte por e-mail no cadastro de um motorista (ver
-    // PassageiroController#cadastrar). Mesmo desenho de
-    // gerarTokenRedefinicaoSenha, validade maior (ver constante no topo).
-    @Transactional
-    public String gerarTokenAprovacaoCadastro(Long passageiroId) {
-        String token = passwordResetTokenGenerator.gerar();
-
-        CadastroAprovacaoToken aprovacaoToken = new CadastroAprovacaoToken();
-        aprovacaoToken.setToken(token);
-        aprovacaoToken.setPassageiroId(passageiroId);
-        aprovacaoToken.setExpiraEm(LocalDateTime.now().plusDays(TOKEN_APROVACAO_VALIDADE_DIAS));
-        aprovacaoToken.setUsado(false);
-        cadastroAprovacaoTokenRepository.save(aprovacaoToken);
-
-        return token;
-    }
-
-    // Carrega o cadastro pra página de revisão do suporte — NÃO marca o
-    // token como usado, pra permitir reabrir o link e olhar os documentos
-    // de novo antes de decidir (só aprovar/reprovar consome o token).
-    public Passageiro buscarParaRevisaoPorToken(String token) {
-        CadastroAprovacaoToken aprovacaoToken = validarTokenAprovacao(token, false);
-        return passageiroRepository.findById(aprovacaoToken.getPassageiroId())
-                .orElseThrow(() -> new ValidationException("Cadastro não encontrado para este link."));
-    }
-
-    @Transactional
-    public Passageiro aprovarCadastro(String token) {
-        CadastroAprovacaoToken aprovacaoToken = validarTokenAprovacao(token, true);
-        Passageiro passageiro = passageiroRepository.findById(aprovacaoToken.getPassageiroId())
-                .orElseThrow(() -> new ValidationException("Cadastro não encontrado para este link."));
-
-        passageiro.setStatusCadastro(StatusCadastro.APROVADO);
-        passageiro.setAtivo(true);
-        return passageiroRepository.save(passageiro);
-    }
-
-    @Transactional
-    public Passageiro reprovarCadastro(String token, String motivo) {
-        CadastroAprovacaoToken aprovacaoToken = validarTokenAprovacao(token, true);
-        Passageiro passageiro = passageiroRepository.findById(aprovacaoToken.getPassageiroId())
-                .orElseThrow(() -> new ValidationException("Cadastro não encontrado para este link."));
-
-        passageiro.setStatusCadastro(StatusCadastro.REPROVADO);
-        passageiro.setAtivo(false);
-        passageiro.setMotivoReprovacao(isBlank(motivo) ? null : motivo);
-        return passageiroRepository.save(passageiro);
-    }
-
-    // Valida o token (existe, não expirou, não foi usado). marcarUsado=true
-    // consome o token no mesmo passo, pra não poder ser reaproveitado —
-    // usado pelas ações de aprovar/reprovar, mas não pela simples visualização.
-    private CadastroAprovacaoToken validarTokenAprovacao(String token, boolean marcarUsado) {
-        CadastroAprovacaoToken aprovacaoToken = cadastroAprovacaoTokenRepository.findByToken(token)
-                .orElseThrow(() -> new ValidationException("Link de aprovação inválido ou já utilizado."));
-
-        if (aprovacaoToken.isUsado()) {
-            throw new ValidationException("Este cadastro já foi revisado anteriormente.");
-        }
-        if (aprovacaoToken.getExpiraEm().isBefore(LocalDateTime.now())) {
-            throw new ValidationException("Link de aprovação expirado. Contate o suporte técnico.");
-        }
-
-        if (marcarUsado) {
-            aprovacaoToken.setUsado(true);
-            cadastroAprovacaoTokenRepository.save(aprovacaoToken);
-        }
-        return aprovacaoToken;
     }
 
     @Transactional

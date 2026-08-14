@@ -36,7 +36,9 @@ import java.util.stream.Collectors;
  *  para um único IP, tornando ataques automatizados inviáveis.
  *
  * INTEGRAÇÃO: Registrado em SecurityConfig antes do JwtAuthFilter.
- * Aplica-se apenas às rotas de login (ver método shouldNotFilter).
+ * Aplica-se às rotas de login e outros endpoints públicos sensíveis
+ * (cadastro, aprovação de motorista por token, esqueci-senha, contato —
+ * ver método shouldNotFilter para a lista completa).
  *
  * NOTA PARA PRODUÇÃO: Substitua o ConcurrentHashMap em memória por
  * Bucket4j + Redis para funcionar corretamente em múltiplas instâncias.
@@ -98,17 +100,36 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * que disparam ação sensível (ex.: esqueci-senha e contato enviam
      * e-mail — sem limite, dá pra floodar a caixa de entrada de qualquer
      * cadastrado, ou a da própria VanMos no caso do formulário de contato).
-     * Todas as outras rotas passam direto sem consumir tokens.
+     * Também cobre o autocadastro (POST /api/passageiros e /api/motoristas —
+     * sem isso dava pra automatizar tentativas de cadastro/abuso sem
+     * fricção nenhuma) e o fluxo de aprovação de motorista por token
+     * (GET/POST /api/motoristas/aprovacao/**), já que o path muda por
+     * requisição (token na URL), por isso o startsWith em vez de equals.
+     * Todas as outras rotas passam direto sem consumir tokens — em
+     * especial os pollings autenticados do app (progresso da rota, faltas
+     * de hoje), que já rodam perto do limite de 5/min sozinhos e
+     * quebrariam se caíssem numa lista "protegida por padrão".
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
+        boolean isPost = "POST".equalsIgnoreCase(request.getMethod());
+        boolean isCadastroPassageiroPublico = isPost && path.equals("/api/passageiros");
+        boolean isCadastroMotoristaPublico = isPost && path.equals("/api/motoristas");
+        boolean isAprovacaoPassageiro = path.startsWith("/api/passageiros/aprovacao/");
+        boolean isAprovacaoMotorista = path.startsWith("/api/motoristas/aprovacao/");
+
         return !path.equals("/api/login")
                 && !path.equals("/api/login-admin")
-                && !path.equals("/api/motoristas-admin/login")
                 && !path.equals("/api/passageiros/esqueci-senha")
                 && !path.equals("/api/passageiros/redefinir-senha")
-                && !path.equals("/api/contato");
+                && !path.equals("/api/motoristas/esqueci-senha")
+                && !path.equals("/api/motoristas/redefinir-senha")
+                && !path.equals("/api/contato")
+                && !isCadastroPassageiroPublico
+                && !isCadastroMotoristaPublico
+                && !isAprovacaoPassageiro
+                && !isAprovacaoMotorista;
     }
 
     private String resolveClientIp(HttpServletRequest request) {

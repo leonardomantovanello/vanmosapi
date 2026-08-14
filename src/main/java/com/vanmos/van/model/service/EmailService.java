@@ -1,7 +1,7 @@
 package com.vanmos.van.model.service;
 
 import com.vanmos.van.dto.ContatoRequest;
-import com.vanmos.van.model.entity.Passageiro;
+import com.vanmos.van.model.entity.Motorista;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,7 +122,7 @@ public class EmailService {
      * pra não ser disparado por acidente por scanners de link (Outlook Safe
      * Links e afins, que abrem automaticamente todo link recebido).
      */
-    public void enviarSolicitacaoAprovacaoCadastro(Passageiro motorista, String token) {
+    public void enviarSolicitacaoAprovacaoCadastro(Motorista motorista, String token) {
         String link = frontendUrl + "/motorista/analise-cadastro?token=" + token;
 
         SimpleMailMessage mensagem = new SimpleMailMessage();
@@ -146,7 +146,7 @@ public class EmailService {
         try {
             mailSender.send(mensagem);
         } catch (Exception e) {
-            log.error("Falha ao enviar e-mail de solicitação de aprovação para passageiro id={}", motorista.getId(), e);
+            log.error("Falha ao enviar e-mail de solicitação de aprovação para motorista id={}", motorista.getId(), e);
             throw new IllegalStateException("Não foi possível notificar o suporte para análise.");
         }
     }

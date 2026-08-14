@@ -1,5 +1,7 @@
 package com.vanmos.van.controller;
 
+import com.vanmos.van.model.entity.Motorista;
+import com.vanmos.van.model.repository.MotoristaRepository;
 import com.vanmos.van.model.repository.PassageiroRepository;
 import com.vanmos.van.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Controller responsável pela renovação de tokens JWT.
@@ -38,6 +41,9 @@ public class AuthController {
     @Autowired
     private PassageiroRepository passageiroRepository;
 
+    @Autowired
+    private MotoristaRepository motoristaRepository;
+
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshTokenCookie,
@@ -66,22 +72,35 @@ public class AuthController {
 
         String subject = jwtUtil.extractSubject(refreshToken);
 
-        // Busca o usuário no banco para recuperar role e userId corretos.
-        // O subject é o email do usuário (definido no login).
-        return passageiroRepository.findByEmailIgnoreCase(subject)
+        // Busca o usuário no banco pra recuperar role e userId corretos —
+        // tenta passageiros primeiro, depois motorista (mesma ordem do
+        // login unificado, ver LoginController), já que o subject (email)
+        // por si só não diz de qual tabela o usuário é.
+        Optional<ResponseEntity<?>> respostaPassageiro = passageiroRepository.findByEmailIgnoreCase(subject)
                 .map(usuario -> {
-                    // Role depende do tipo de cadastro (MOTORISTA ou PASSAGEIRO) —
-                    // mesma lógica usada no login (ver LoginController).
                     String role = "MOTORISTA".equals(usuario.getTipo()) ? "MOTORISTA" : "RESPONSAVEL";
                     String novoAccessToken = jwtUtil.generateAccessToken(subject, role, usuario.getId());
                     return ResponseEntity.ok(Map.of(
                             "sucesso",      true,
                             "accessToken",  novoAccessToken
                     ));
-                })
-                .orElseGet(() -> ResponseEntity.status(401).body(Map.of(
-                        "sucesso", false,
-                        "mensagem", "Usuário não encontrado. Faça login novamente."
-                )));
+                });
+        if (respostaPassageiro.isPresent()) {
+            return respostaPassageiro.get();
+        }
+
+        Optional<Motorista> motorista = motoristaRepository.findByEmailIgnoreCase(subject);
+        if (motorista.isPresent()) {
+            String novoAccessToken = jwtUtil.generateAccessToken(subject, "MOTORISTA", motorista.get().getId());
+            return ResponseEntity.ok(Map.of(
+                    "sucesso",      true,
+                    "accessToken",  novoAccessToken
+            ));
+        }
+
+        return ResponseEntity.status(401).body(Map.of(
+                "sucesso", false,
+                "mensagem", "Usuário não encontrado. Faça login novamente."
+        ));
     }
 }

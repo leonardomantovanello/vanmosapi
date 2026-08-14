@@ -5,16 +5,14 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Token de uso único do link de aprovação/reprovação de cadastro de
- * motorista, enviado por e-mail ao suporte. Mesmo desenho de
- * PasswordResetToken, mas com validade maior (ver MotoristaService —
- * revisão de documento por humano leva mais tempo que redefinir senha).
- * Exclusivo de Motorista — Passageiro nunca gera esse token (ver V16, que
- * repontou o FK de passageiros(id) pra motorista(id) e renomeou a coluna).
+ * Token de uso único do fluxo "esqueci minha senha" por link de e-mail —
+ * mesmo desenho de PasswordResetToken, só que pra Motorista. Tabela própria
+ * porque password_reset_tokens (Passageiro) e motorista deixaram de
+ * compartilhar id space na migração de V15 (ver MotoristaService).
  */
 @Entity
-@Table(name = "cadastro_aprovacao_tokens")
-public class CadastroAprovacaoToken {
+@Table(name = "motorista_password_reset_tokens")
+public class MotoristaPasswordResetToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

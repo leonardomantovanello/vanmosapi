@@ -125,13 +125,16 @@ public class SecurityConfig {
                     // ficava acidentalmente público também até essa correção, pois essa
                     // regra é avaliada antes da regra ROLE_ADMIN mais específica abaixo.
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login", "/api/login-admin",
-                            "/api/passageiros", "/api/auth/refresh", "/api/motoristas-admin/login", "/api/contato",
+                            "/api/passageiros", "/api/auth/refresh", "/api/contato",
                             "/api/passageiros/esqueci-senha", "/api/passageiros/redefinir-senha",
-                            "/api/passageiros/aprovacao/*/aprovar", "/api/passageiros/aprovacao/*/reprovar")
+                            "/api/passageiros/aprovacao/*/aprovar", "/api/passageiros/aprovacao/*/reprovar",
+                            "/api/motoristas", "/api/motoristas/esqueci-senha", "/api/motoristas/redefinir-senha",
+                            "/api/motoristas/aprovacao/*/aprovar", "/api/motoristas/aprovacao/*/reprovar")
                     .permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET,
-                            "/api/passageiros/verificar-email", "/api/motoristas-admin/publico",
-                            "/api/passageiros/aprovacao/*")
+                            "/api/passageiros/verificar-email",
+                            "/api/passageiros/aprovacao/*",
+                            "/api/motoristas/publico", "/api/motoristas/aprovacao/*")
                     .permitAll()
 
                     // Handshake do WebSocket/STOMP (chat e localização em tempo real) —
@@ -140,22 +143,8 @@ public class SecurityConfig {
                     // frame CONNECT do STOMP, não como header HTTP nessa fase).
                     .requestMatchers("/ws/**").permitAll()
 
-                    // Motoristas-admin: GET/PUT em /{id} e /{id}/senha são o
-                    // próprio motorista vendo/editando o próprio perfil — a
-                    // ownership real (só o próprio motorista ou ADMIN) é
-                    // validada dentro de MotoristasAdminController. Listar
-                    // todos, criar, ativar/inativar e deletar continuam
-                    // exclusivos de ADMIN (caem no requestMatchers "**" logo
-                    // abaixo, que não casa com esses dois padrões de 1 segmento).
-                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas-admin/*")
-                    .authenticated()
-                    .requestMatchers(org.springframework.http.HttpMethod.PUT,
-                            "/api/motoristas-admin/*", "/api/motoristas-admin/*/senha")
-                    .authenticated()
-
                     // Rotas exclusivas de administrador
                     .requestMatchers(
-                            "/api/motoristas-admin/**",
                             "/api/passageiros/*/ativar",
                             "/api/passageiros/*/inativar"
                     ).hasRole("ADMIN")
@@ -170,14 +159,20 @@ public class SecurityConfig {
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/passageiros/cadastrar-motorista")
                     .hasAnyRole("ADMIN", "MOTORISTA")
 
-                    // Motoristas: leitura para ADMIN e MOTORISTA; escrita apenas ADMIN
-                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas", "/api/motoristas/**")
-                    .hasAnyRole("ADMIN", "MOTORISTA")
+                    // Motoristas: GET/PUT em /{id} e /{id}/senha são o próprio
+                    // motorista vendo/editando o próprio perfil — ownership
+                    // real validada dentro de MotoristaController. Listar
+                    // todos e ativar/inativar continuam exclusivos de ADMIN.
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas/*")
+                    .authenticated()
+                    .requestMatchers(org.springframework.http.HttpMethod.PUT,
+                            "/api/motoristas/*", "/api/motoristas/*/senha")
+                    .authenticated()
 
-                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/motoristas")
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/motoristas")
                     .hasRole("ADMIN")
 
-                    .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/motoristas/**")
+                    .requestMatchers("/api/motoristas/*/ativar", "/api/motoristas/*/inativar")
                     .hasRole("ADMIN")
 
                     // Vans: leitura para ADMIN e MOTORISTA; escrita apenas ADMIN
