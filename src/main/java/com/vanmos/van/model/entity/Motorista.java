@@ -52,7 +52,7 @@ public class Motorista {
     @NotBlank(message = "E-mail é obrigatório")
     @Email(message = "E-mail inválido")
     @Size(max = 100, message = "E-mail deve ter no máximo 100 caracteres")
-    @Column(name = "email", length = 100)
+    @Column(name = "email", length = 100, unique = true)
     private String email;
 
     @Column(name = "ativo")

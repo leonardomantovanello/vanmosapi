@@ -3,6 +3,7 @@ package com.vanmos.van.model.service;
 import com.vanmos.van.exception.ValidationException;
 import com.vanmos.van.model.entity.Passageiro;
 import com.vanmos.van.model.entity.PasswordResetToken;
+import com.vanmos.van.model.repository.MotoristaRepository;
 import com.vanmos.van.model.repository.PassageiroRepository;
 import com.vanmos.van.model.repository.PasswordResetTokenRepository;
 import com.vanmos.van.security.PasswordResetTokenGenerator;
@@ -23,6 +24,12 @@ public class PassageiroService {
 
     @Autowired
     private PassageiroRepository passageiroRepository;
+
+    // Só pra checar duplicidade de e-mail entre as duas tabelas de conta
+    // (ver verificarEmailDuplicado) — motorista e passageiro são contas
+    // separadas mas compartilham o mesmo espaço de e-mails de login.
+    @Autowired
+    private MotoristaRepository motoristaRepository;
 
     @Autowired
     private PasswordResetTokenRepository passwordResetTokenRepository;
@@ -99,9 +106,15 @@ public class PassageiroService {
 
     // Cadastro só cadastra — se email já existe, rejeita sempre.
     // Login é responsabilidade exclusiva do endpoint /api/login.
+    // Checa nas duas tabelas: um e-mail já usado como motorista não pode
+    // virar passageiro (e vice-versa em MotoristaService), senão o login
+    // (que resolve passageiro antes de motorista) deixa a segunda conta
+    // inacessível.
     private void verificarEmailDuplicado(Passageiro passageiro) {
         if (passageiro.getEmail() == null) return;
-        if (passageiroRepository.findByEmailIgnoreCase(passageiro.getEmail().trim()).isPresent()) {
+        String email = passageiro.getEmail().trim();
+        if (passageiroRepository.findByEmailIgnoreCase(email).isPresent()
+                || motoristaRepository.findByEmailIgnoreCase(email).isPresent()) {
             throw new IllegalArgumentException("E-mail já cadastrado");
         }
     }
@@ -133,9 +146,13 @@ public class PassageiroService {
         }
 
         if (passageiro.getEmail() != null && !passageiro.getEmail().isBlank()) {
-            passageiroRepository.findByEmailIgnoreCase(passageiro.getEmail().trim()).ifPresent(outro -> {
+            String email = passageiro.getEmail().trim();
+            passageiroRepository.findByEmailIgnoreCase(email).ifPresent(outro -> {
                 if (!outro.getId().equals(id)) throw new IllegalArgumentException("E-mail já cadastrado");
             });
+            if (motoristaRepository.findByEmailIgnoreCase(email).isPresent()) {
+                throw new IllegalArgumentException("E-mail já cadastrado");
+            }
             existente.setEmail(passageiro.getEmail());
         }
 
